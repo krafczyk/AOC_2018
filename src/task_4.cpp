@@ -23,33 +23,45 @@ int main(int argc, char** argv) {
 	//open box id file
 	std::ifstream infile(input_filepath.c_str());
 
-	unsigned int num_two = 0;
-	unsigned int num_three = 0;
-
+	std::vector<std::string> box_ids;
 	std::string box_id;
 	while(infile >> box_id) {
-		std::map<char, int> letter_map;
-		for(unsigned int idx = 0; idx < box_id.size(); ++idx) {
-			letter_map[box_id[idx]] += 1;
-		}
-		bool two = false;
-		bool three = false;
-		for(auto it=letter_map.begin(); it != letter_map.end(); ++it) {
-			if(it->second == 2) {
-				two = true;
-			} else if (it->second == 3) {
-				three = true;
-			}
-		}
-		if (two) {
-			num_two += 1;
-		}
-		if (three) {
-			num_three +=1;
-		}
+		box_ids.push_back(box_id);
 	}
 
-	std::cout << "Checksum: " << num_two*num_three << std::endl;
+	unsigned int i_idx = 0;
+	unsigned int j_idx = 0;
+	unsigned int match_k_idx = 0;
+	unsigned int id_length = box_ids[0].size();
+	int num_mismatches = 0;
+	for(i_idx = 0; i_idx < box_ids.size(); ++i_idx) {
+		std::string& i_id = box_ids[i_idx];
+		for(j_idx = i_idx+1; j_idx < box_ids.size(); ++j_idx) {
+			std::string& j_id = box_ids[j_idx];
+			// Count mismatches
+			num_mismatches = 0;
+			for(unsigned int k_idx = 0; k_idx < id_length; ++k_idx) {
+				if(i_id[k_idx] != j_id[k_idx]) {
+					num_mismatches += 1;
+					match_k_idx = k_idx;
+				}
+				if (num_mismatches >= 2) {
+					break;
+				}
+			}
+			if(num_mismatches == 1) {
+				break;
+			}
+		}
+		if (num_mismatches == 1) {
+			break;
+		}
+	}
+	std::string the_string = box_ids[i_idx];
+
+	the_string.erase(the_string.begin()+match_k_idx);
+
+	std::cout << "Remaining letters: " << the_string << std::endl;
 
 	return 0;
 }
