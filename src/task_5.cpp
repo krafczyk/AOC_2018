@@ -10,8 +10,10 @@
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
+	bool verbose = false;
 	ArgParse::ArgParser Parser("Task 5");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
 		std::cerr << "Problem parsing arguments!" << std::endl;
@@ -57,7 +59,9 @@ int main(int argc, char** argv) {
 		int h;
 		infile >> h;
 		infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-		std::cout << "#" << id << " @ " << x << "," << y << ": " << w << "x" << h << std::endl;
+		if (verbose) {
+			std::cout << "#" << id << " @ " << x << "," << y << ": " << w << "x" << h << std::endl;
+		}
 		for(int i=0; i<w; ++i) {
 			for(int j=0; j<h; ++j) {
 				fabric[i+x][j+y] += 1;
