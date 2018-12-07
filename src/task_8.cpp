@@ -175,51 +175,55 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	// Determine sleepiest guard
-	std::map<int,int> guard_sleep;
+	// Count up guards
+	std::vector<int> guards;
 	for (unsigned int idx=0; idx < sleep_intervals.size(); ++idx) {
-		guard_sleep[sleep_intervals[idx].guard_id] += sleep_intervals[idx].length();
-	}
-
-	// Assume there won't be multiple guards with the same sleep..
-	int max_sleep = -1;
-	int max_guard_id = -1;
-	for (auto guard_it = guard_sleep.begin(); guard_it != guard_sleep.end(); ++guard_it) {
-		if (guard_it->second > max_sleep) {
-			max_sleep = guard_it->second;
-			max_guard_id = guard_it->first;
+		// Check if this guard id is already in the vector
+		if(std::find(guards.begin(), guards.end(), sleep_intervals[idx].guard_id) == guards.end()) {
+			guards.push_back(sleep_intervals[idx].guard_id);
 		}
 	}
 
-	std::cout << "Sleepiest guard is #" << max_guard_id << " they slept for " << max_sleep << " minutes" << std::endl;
+	// Count minutes sleep on each minute/guard combo
+	int sleep_occurances[guards.size()][60];
 
-	// Determine sleepiest minute of max guard.
-	int days_slept_on_minute[60];
-	for(int idx=0; idx < 60; ++idx) {
-		days_slept_on_minute[idx] = 0;
+	for (unsigned int i_idx=0; i_idx < guards.size(); ++i_idx) {
+		for(unsigned int j_idx=0; j_idx < 60; ++j_idx) {
+			sleep_occurances[i_idx][j_idx] = 0;
+		}
 	}
 
+	// Count up sleep intervals
 	for (auto interval_it = sleep_intervals.begin(); interval_it != sleep_intervals.end(); ++interval_it) {
-		if(interval_it->guard_id == max_guard_id) {
-			for(int min = interval_it->sleep_start; min < interval_it->sleep_stop; ++min) {
-				days_slept_on_minute[min] += 1;
+		for(int min=interval_it->sleep_start; min < interval_it->sleep_stop; ++min) {
+			unsigned int guard_idx = 0;
+			for(; guard_idx < guards.size(); ++guard_idx) {
+				if(guards[guard_idx] == interval_it->guard_id) {
+					break;
+				}
+			}
+			sleep_occurances[guard_idx][min] += 1;
+		}
+	}
+
+	// Determine guard / minute which has the most days sleep
+	int max_occurances = -1;
+	int g_idx_max = -1;
+	int min_max = -1;
+	for (unsigned int g_idx=0; g_idx < guards.size(); ++g_idx) {
+		for(int min=0; min < 60; ++min) {
+			if(sleep_occurances[g_idx][min] > max_occurances) {
+				max_occurances = sleep_occurances[g_idx][min];
+				g_idx_max = g_idx;
+				min_max = min;
 			}
 		}
 	}
 
-	// Determine the minute slept during the most
-	int max_min = -1;
-	int max_days = -1;
-	for (int min=0; min < 60; ++min) {
-		if (days_slept_on_minute[min] > max_days) {
-			max_days = days_slept_on_minute[min];
-			max_min = min;
-		}
-	}
+	int the_guard_id = guards[g_idx_max];
 
-	std::cout << "Their sleepiest minute is: " << max_min << " and they slept " << max_days << std::endl;
-
-	std::cout << "Answer is: " << max_guard_id*max_min << std::endl;
+	std::cout << "Guard #" << the_guard_id << " slept on minute " << min_max << " more than any other guard on any other minute." << std::endl;
+	std::cout << "Answer is: " << the_guard_id*min_max << std::endl;
 
 	return 0;
 }
