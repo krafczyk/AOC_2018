@@ -43,13 +43,19 @@ flags = [
 '-x',
 'c++',
 '-isystem',
-'/usr/include',
+'/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/8.2.1/../../../../include/c++/8.2.1',
+'-isystem',
+'/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/8.2.1/../../../../include/c++/8.2.1/x86_64-pc-linux-gnu',
+'-isystem',
+'/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/8.2.1/../../../../include/c++/8.2.1/backward',
 '-isystem',
 '/usr/local/include',
 '-isystem',
-'/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/c++/v1',
+'/usr/lib/clang/7.0.0/include'
 '-isystem',
-'/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include',
+'/usr/include',
+'-isystem',
+'/usr/local/include',
 ]
 
 
