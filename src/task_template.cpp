@@ -1,12 +1,13 @@
 #include <iostream>
 #include <fstream>
-#include "ArgParseStandalone.h"
 #include <string>
 #include <set>
 #include <map>
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include "ArgParseStandalone.h"
+#include "utilities.h"
 
 int main(int argc, char** argv) {
 	// Parse Arguments
