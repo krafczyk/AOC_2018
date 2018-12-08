@@ -1,12 +1,13 @@
 #include <iostream>
 #include <fstream>
-#include "ArgParseStandalone.h"
 #include <string>
 #include <set>
 #include <map>
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include "ArgParseStandalone.h"
+#include "utilities.h"
 
 class coordinate {
 	public:
@@ -21,6 +22,16 @@ class coordinate {
 		}
 		void print() const {
 			std::cout << this->x << ", " << this->y << std::endl;
+		}
+		bool operator==(const coordinate& rhs) const {
+			if ((this->x == rhs.x)&&(this->y == rhs.y)) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		bool operator!=(const coordinate& rhs) const {
+			return !((*this)==rhs);
 		}
 };
 
@@ -120,7 +131,7 @@ int main(int argc, char** argv) {
 	auto check_and_add_inf_coord = [&coords, &inf_coords](int x, int y) {
 		int nearest_idx = getClosest(coordinate(x, y), coords);
 		if (nearest_idx >= 0) {
-			if(std::find(inf_coords.begin(), inf_coords.end(), nearest_idx) == inf_coords.end()) {
+			if(!hasElement(inf_coords.begin(), inf_coords.end(), nearest_idx)) {
 				inf_coords.push_back(nearest_idx);
 			}
 		}
@@ -146,7 +157,7 @@ int main(int argc, char** argv) {
 	}
 	// Upper side
 	x_c = min_x-1;
-	y_c = min_y+1;
+	y_c = max_y+1;
 	for(; x_c <= max_x+1; ++x_c) {
 		check_and_add_inf_coord(x_c, y_c);
 	}
@@ -157,6 +168,68 @@ int main(int argc, char** argv) {
 			std::cout << inf_coords[idx] << std::endl;
 		}
 	}
+
+	// Mark grid points with closest coordinate
+
+	auto get_x = [min_x](int idx) {
+		return idx+(min_x-1);
+	};
+	auto get_y = [min_y](int idx) {
+		return idx+(min_y-1);
+	};
+	int closestGridId[max_x+min_x+1][max_y+min_y+1];
+	for(int x_idx=0; x_idx < max_x+min_x+1; ++x_idx) {
+		for(int y_idx=0; y_idx < max_y+min_y+1; ++y_idx) {
+			closestGridId[x_idx][y_idx] = getClosest(coordinate(get_x(x_idx),get_y(y_idx)), coords);
+		}
+	}
+
+	auto getLabel = [](int idx) {
+		if(idx == -1) {
+			return '.';
+		} else {
+			return char(97+idx);
+		}
+	};
+	auto getCoordLabel = [](int idx) {
+		return char(65+idx);
+	};
+
+	if (verbose) {
+		for(int y_idx=0;  y_idx < max_y+min_y+1; ++y_idx) {
+			for(int x_idx=0; x_idx < max_x+min_x+1; ++x_idx) {
+				int x_c = get_x(x_idx);
+				int y_c = get_y(y_idx);
+				if(hasElement(coords.begin(), coords.end(), coordinate(x_c, y_c))) {
+					std::cout << getCoordLabel(closestGridId[x_idx][y_idx]);
+				} else {
+					std::cout << getLabel(closestGridId[x_idx][y_idx]);
+				}
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	// Count areas
+	std::map<int,int> finite_areas;
+	for(int y_idx=0;  y_idx < max_y+min_y+1; ++y_idx) {
+		for(int x_idx=0; x_idx < max_x+min_x+1; ++x_idx) {
+			int nearest_idx = closestGridId[x_idx][y_idx];
+			if(!hasElement(inf_coords.begin(), inf_coords.end(), nearest_idx)) {
+				finite_areas[nearest_idx] += 1;
+			}
+		}
+	}
+
+	// Find largest area
+	int largest_area = std::numeric_limits<int>::min();
+	for(auto it = finite_areas.begin(); it != finite_areas.end(); ++it) {
+		if (it->second > largest_area) {
+			largest_area = it->second;
+		}
+	}
+
+	std::cout << "The largest finite area has size " << largest_area << std::endl;
 
 	return 0;
 }
