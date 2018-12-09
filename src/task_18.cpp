@@ -11,7 +11,7 @@
 
 class marble {
 	public:
-		marble(int val) {
+		marble(long val) {
 			this->val = val;
 			this->cw = nullptr;
 			this->ccw = nullptr;
@@ -21,7 +21,7 @@ class marble {
 		void print() const {
 			std::cout << this->ccw->val << " <- " << this->val << " -> " << this->cw->val << std::endl;
 		}
-		int val;
+		long val;
 		marble* cw;
 		marble* ccw;
 };
@@ -62,8 +62,8 @@ class marble_circle {
 				next->ccw = new_marble;		
 		}
 
-		int removeMarble(marble* the_marble) {
-			int val = the_marble->val;
+		long removeMarble(marble* the_marble) {
+			long val = the_marble->val;
 			marble* prev = the_marble->ccw;
 			marble* next = the_marble->cw;
 
@@ -75,12 +75,12 @@ class marble_circle {
 		}
 
 		// Returns score from adding the marble.
-		int addMarble() {
+		long addMarble() {
 			// Update value of last marble, a bit misleading, but
 			// this is now the value of the new marble.
 			this->last_marble += 1;
 			if (this->last_marble%23 == 0) {
-				int answer = this->last_marble;
+				long answer = this->last_marble;
 				answer += removeMarble(this->current_marble->ccw->ccw->ccw->ccw->ccw->ccw->ccw);
 				this->current_marble = this->current_marble->ccw->ccw->ccw->ccw->ccw->ccw;
 				return answer;
@@ -120,7 +120,7 @@ class marble_circle {
 
 	private:
 		marble* current_marble;
-		int last_marble;
+		long last_marble;
 };
 
 int main(int argc, char** argv) {
@@ -155,10 +155,10 @@ int main(int argc, char** argv) {
 	infile >> line;
 	infile >> line;
 
-	int last_val;
+	long last_val;
 	infile >> last_val;
 
-	int test_result = 0;
+	long test_result = 0;
 	if (test_mode) {
 		infile >> line;
 		infile >> line;
@@ -175,7 +175,7 @@ int main(int argc, char** argv) {
 	}
 
 	marble_circle the_game;
-	int scores[num_players];
+	long scores[num_players];
 	for(int idx=0; idx < num_players; ++idx) {
 		scores[idx] = 0;
 	}
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
 		num_turns += 1;
 	}
 
-	int high_score = std::numeric_limits<int>::min();
+	long high_score = std::numeric_limits<long>::min();
 	for(int idx = 0; idx < num_players; ++idx) {
 		if (scores[idx] > high_score) {
 			high_score = scores[idx];
