@@ -13,9 +13,13 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
-	ArgParse::ArgParser Parser("Task 13");
+	int num_workers = 5;
+	int base_cost = 60;
+	ArgParse::ArgParser Parser("Task 14");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
+	Parser.AddArgument("-n/--num-workers", "Number of workers", &num_workers, ArgParse::Argument::Optional);
+	Parser.AddArgument("-b/--base-cost", "Base cost per step", &base_cost, ArgParse::Argument::Optional);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
 		std::cerr << "Problem parsing arguments!" << std::endl;
@@ -71,6 +75,21 @@ int main(int argc, char** argv) {
 	std::set<char> options;
 	// Current steps completed
 	std::set<char> completed;
+	// Current steps in progress
+	std::map<int,std::pair<char,int>> workers;
+
+	// Add idle workers
+	for(int i=0; i<num_workers; ++i) {
+		workers[i] = std::pair<char,int>(-1,-1);
+	}
+
+	auto is_idle __attribute__((unused)) = [](std::pair<char,int>& in) {
+		if(in.first == -1) {
+			return true;
+		} else {
+			return false;
+		}
+	};
 
 	// Add the labels with no deps to initial options
 	for(auto uit = unique_labels.begin(); uit != unique_labels.end(); ++uit) {
@@ -93,21 +112,92 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	while(options.size() != 0) {
-		// Pick first option
-		char picked_option = *options.begin();
-		// Add it to answer
-		answer.push_back(picked_option);
-		// Add it to completed steps
-		completed.insert(picked_option);
-		// Remove picked option from options
-		options.erase(options.begin());
+	auto get_idle_worker_ids = [&workers,&is_idle]() {
+		std::vector<int> idle_workers;
+		for(auto worker_it = workers.begin(); worker_it != workers.end(); ++worker_it) {
+			if(is_idle(worker_it->second)) {
+				idle_workers.push_back(worker_it->first);
+			}
+		}
+		return idle_workers;
+	};
+
+	auto get_job_cost = [base_cost](char job) {
+		return base_cost + (((int)job)-64);
+	};
+
+	int time_spent = 0;
+	std::vector<int> idle_workers;
+	while(completed.size() != unique_labels.size()) {
+		// doll out new jobs
+		while((options.size() != 0)&&((idle_workers = get_idle_worker_ids()).size() != 0)) {
+			// Pick first option
+			char picked_option = *options.begin();
+			// Remove picked option from options
+			options.erase(options.begin());
+			// Assign to idle worker
+			int worker_id = idle_workers[0];
+			workers[worker_id] = std::pair<char,int>(picked_option, get_job_cost(picked_option));
+		}
+		// Find the cheapest job
+		int cheapest_job_cost = std::numeric_limits<int>::max();
+		for(auto worker_it = workers.begin(); worker_it != workers.end(); ++worker_it) {
+			if(!is_idle(worker_it->second)) {
+				if(worker_it->second.second < cheapest_job_cost) {
+					cheapest_job_cost = worker_it->second.second;
+				}
+			}
+		}
+		// Advance by cheapest cost
+		for(auto worker_it = workers.begin(); worker_it != workers.end(); ++worker_it) {
+			if(!is_idle(worker_it->second)) {
+				worker_it->second.second -= cheapest_job_cost;
+			}
+		}
+		// Advance time spent by cheapest cost
+		time_spent += cheapest_job_cost;
+		// Handle workers who have completed their jobs.
+		// At least one worker should have completed their job.
+		bool workerFinished = false;
+		for(auto worker_it = workers.begin(); worker_it != workers.end(); ++worker_it) {
+			if(!is_idle(worker_it->second)) {
+				// job finished
+				if(worker_it->second.second == 0) {
+					// Add job to completed lit
+					completed.insert(worker_it->second.first);
+					// Add job to completed string
+					answer.append(1, worker_it->second.first);
+					// Indicate that a worker finished this round.
+					workerFinished = true;
+					// Make worker idle.
+					worker_it->second.first = -1;
+					worker_it->second.second = -1;
+				}
+			}
+		}
+		// Abort if no workder finished
+		if(!workerFinished) {
+			std::cerr << "No worker finished this round!!" << std::endl;
+			return -1;
+		}
+
 		// Add steps whose dependencies have been completed
 		for(auto map_it = dep_map.begin(); map_it != dep_map.end(); ++map_it) {
 			// The label we're checking for
 			char check_label = map_it->first;
 			// See if it's already an option
 			if (hasElement(options.begin(), options.end(), check_label)) {
+				continue;
+			}
+			// See if its in progress
+			bool in_progress = false;
+			for(auto worker_it = workers.begin(); worker_it != workers.end(); ++worker_it) {
+				if(worker_it->second.first == check_label) {
+					in_progress = true;
+					break;
+				}
+			}
+			if(in_progress) {
 				continue;
 			}
 			// See if it's already completed
@@ -141,7 +231,7 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	std::cout << "The step order is: " << answer << std::endl;
+	std::cout << "The time taken is: " << time_spent << std::endl;
 
 	return 0;
 }
