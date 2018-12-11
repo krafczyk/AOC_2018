@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 	int mini_grid_size = 3;
 	int test_answer = 0;
 	bool test_answer_passed = false;
-	ArgParse::ArgParser Parser("Task Template");
+	ArgParse::ArgParser Parser("Task 21");
 	Parser.AddArgument("-s/--serial-number", "Pass in serial number", &serial_number);
 	Parser.AddArgument("-gs/--grid-size", "Pass in grid size", &grid_size, ArgParse::Argument::Optional);
 	Parser.AddArgument("-mgs/--mini-grid-size", "Pass in mini grid size", &mini_grid_size, ArgParse::Argument::Optional);
