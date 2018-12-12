@@ -10,6 +10,36 @@
 #include "ArgParseStandalone.h"
 #include "utilities.h"
 
+/*
+template<typename T>
+class sparse_state {
+	public:
+		sparse_state() {
+		};
+		bool operator[](T idx) {
+			if(hasElement(state, idx)) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		void set(T idx) {
+			this->state.insert(idx);
+		}
+		void remove(T idx) {
+			this->state.remove(idx);
+		}
+		T lowest() const {
+			return *state.begin();
+		}
+		T highest() const {
+			return *(state.end()-1);
+		}
+	private:
+		std::set<T> state;
+};
+*/
+
 void print_state(bool* state, long size) {
 	for(long idx=0; idx < size; ++idx) {
 		if(state[idx]) {
@@ -46,6 +76,10 @@ class rule {
 				}
 			}
 			return matches;
+		}
+		template<typename T>
+		bool match(typename std::set<T>::iterator it) {
+			// Iterator should start
 		}
 		void print() const {
 			for(long i=0; i<5; ++i) {
@@ -86,29 +120,13 @@ int main(int argc, char** argv) {
 
 	std::string init_state = line.substr(15);
 
-	// Helper variables and function to transition
-	long left_extent = -5000000000;
-	//long right_extent = (long)(line.size()*1);
-	long right_extent = 75000000000;
-	long num_places = -left_extent+right_extent+1;
-	auto idx_to_num = [left_extent](long idx) {
-		return idx+left_extent;
-	};
-	auto num_to_idx = [left_extent](long num) {
-		return num-left_extent;
-	};
-
 	// initialize state
-	bool* state = new bool[num_places];
-	bool* state_next = new bool[num_places];
-	for(long i=0; i < num_places; ++i) {
-		state[i] = false;
-		state_next[i] = false;
-	}
+	std::set<long> state;
+	std::set<long> state_next;
 
 	for(unsigned long idx = 0; idx < init_state.size(); ++idx) {
 		if (init_state[idx] == '#') {
-			state[num_to_idx(idx)] = true;
+			state.insert(idx);
 		}
 	}
 
