@@ -44,9 +44,10 @@ class sparse_state {
 */
 
 template<typename T>
-void print_state(const std::set<T>& state, pot_num_t min, pot_num_t max) {
+void print_state(const std::set<T>& state, pot_num_t num_show) {
 	typename std::set<T>::const_iterator it = state.begin();
-	for(long idx=min; idx <= max; ++idx) {
+	std::cout << "-" << *it << "- ";
+	for(long idx=*it; idx <= *it+num_show; ++idx) {
 		if(*it > idx) {
 			std::cout << '.';
 		} else {
@@ -126,16 +127,26 @@ class rule {
 		bool the_rule[5];
 };
 
+pot_num_t CalcPotSum(const std::set<pot_num_t>& state) {
+	pot_num_t pot_sum = 0;
+	for(auto it = state.cbegin(); it != state.cend(); ++it) {
+		pot_sum += *it;
+	}
+	return pot_sum;
+}
+
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
-	int min = -5;
-	int max = 35;
+	int num_show = 40;
 	pot_num_t num_gen = 20;
+	bool no_early_quit = false;
 	bool verbose = false;
 	ArgParse::ArgParser Parser("Task 24");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-n/--num-gen", "Number of generations to do", &num_gen);
+	Parser.AddArgument("-ns/--num-show", "Specify number of characters to show", &num_show, ArgParse::Argument::Optional);
+	Parser.AddArgument("-neq", "Specify that the algorithm shouldn't just stop when the answer becomes recurrent", &no_early_quit, ArgParse::Argument::Optional);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -188,11 +199,14 @@ int main(int argc, char** argv) {
 
 	if(verbose) {
 		std::cout << std::setw(3) << std::setfill(' ') << 0 << ": ";
-		print_state(*state, min, max);
+		print_state(*state, num_show);
 	}
 
 	pot_num_t step = 0;
-	while(step < num_gen) {
+	pot_num_t prev_step_sum = CalcPotSum(*state);
+	bool recurrent = false;
+	// We can't do this brute force, we go until the solution becomes recurrent..
+	while((step < num_gen)&&(no_early_quit||(!recurrent))) {
 		// clear the tried set
 		tried.clear();
 		// clear the next set
@@ -240,18 +254,24 @@ int main(int argc, char** argv) {
 		state = state_next;
 		state_next = state_temp;
 
+		if (CalcPotSum(*state)-prev_step_sum == (pot_num_t) state->size()) {
+			recurrent = true;
+		}
+		prev_step_sum = CalcPotSum(*state);
 		if(verbose) {
 			std::cout << std::setw(3) << std::setfill(' ') << step+1 << ": ";
-			print_state(*state, min, max);
+			print_state(*state, num_show);
 		}
 		++step;
 	}
 
-	pot_num_t pot_sum = 0;
-	for(auto it = state->cbegin(); it != state->cend(); ++it) {
-		pot_sum += *it;
+	// Solution is now recurrent.
+
+	if (step > num_gen) {
+		std::cout << "Too few steps to make the state recurrent.." << std::endl;
+	} else {
+		std::cout << "The sum of all pot numbers is: " << CalcPotSum(*state)+((num_gen-step)*state->size()) << std::endl;
 	}
-	std::cout << "The sum of all pot numbers is: " << pot_sum << std::endl;
 
 	return 0;
 }
