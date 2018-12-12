@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <iterator>
 #include <fstream>
 #include <string>
 #include <set>
@@ -9,6 +10,8 @@
 #include <algorithm>
 #include "ArgParseStandalone.h"
 #include "utilities.h"
+
+typedef long pot_num_t;
 
 /*
 template<typename T>
@@ -40,12 +43,19 @@ class sparse_state {
 };
 */
 
-void print_state(bool* state, long size) {
-	for(long idx=0; idx < size; ++idx) {
-		if(state[idx]) {
-			std::cout << '#';
-		} else {
+template<typename T>
+void print_state(const std::set<T>& state, pot_num_t min, pot_num_t max) {
+	typename std::set<T>::const_iterator it = state.begin();
+	for(long idx=min; idx <= max; ++idx) {
+		if(*it > idx) {
 			std::cout << '.';
+		} else {
+			it = std::find_if(it, state.end(), [idx](T a) { return (a >= idx);});
+			if(*it == idx) {
+				std::cout << '#';
+			} else {
+				std::cout << '.';
+			}
 		}
 	}
 	std::cout << std::endl;
@@ -54,12 +64,12 @@ void print_state(bool* state, long size) {
 class rule {
 	public:
 		rule(bool* the_rule) {
-			for(long i=0; i<5; ++i) {
+			for(pot_num_t i=0; i<5; ++i) {
 				this->the_rule[i] = the_rule[i];
 			}
 		}
 		rule(std::string& string_rule) {
-			for(long i=0; i<5; ++i) {
+			for(pot_num_t i=0; i<5; ++i) {
 				if(string_rule[i] == '#') {
 					the_rule[i] = true;
 				} else {
@@ -67,9 +77,9 @@ class rule {
 				}
 			}
 		}
-		bool match(bool* state, long center) const {
+		bool match(bool* state, pot_num_t center) const {
 			bool matches = true;
-			for(long i=0; i<5; ++i) {
+			for(pot_num_t i=0; i<5; ++i) {
 				if(state[center+i-2] != the_rule[i]) {
 					matches = false;
 					break;
@@ -77,12 +87,34 @@ class rule {
 			}
 			return matches;
 		}
-		template<typename T>
-		bool match(typename std::set<T>::iterator it) {
-			// Iterator should start
+		// state_it should satisfy *state_it <= center-2.
+		template<class T>
+		bool match(const typename std::set<T>& set, typename std::set<T>::const_iterator state_it, T center) const {
+			// Backup iterator to before center-2.
+			//typename std::set<T>::reverse_iterator begin = std::find_if(std::reverse_iterator<typename std::set<T>::iterator>(state_it), state.rend(), [center](T a){ return (a <= center-2);});
+
+			bool matches = true;
+			for(T i=-2; i <= 2; ++i) {
+				// Advance iterator
+				state_it = std::find_if(state_it, set.end(), [center,i](T a) { return (a >= center+i); });
+				if(the_rule[i+2]) {
+					// The iterator should be here
+					if(*state_it != center+i) {
+						matches = false;
+						break;
+					}
+				} else {
+					// The iterator should not be here
+					if(*state_it == center+i) {
+						matches = false;
+						break;
+					}
+				}
+			}
+			return matches;
 		}
 		void print() const {
-			for(long i=0; i<5; ++i) {
+			for(pot_num_t i=0; i<5; ++i) {
 				if(the_rule[i]) {
 					std::cout << '#';
 				} else {
@@ -97,9 +129,13 @@ class rule {
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
+	int min = -5;
+	int max = 35;
+	pot_num_t num_gen = 20;
 	bool verbose = false;
 	ArgParse::ArgParser Parser("Task 24");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+	Parser.AddArgument("-n/--num-gen", "Number of generations to do", &num_gen);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -121,12 +157,13 @@ int main(int argc, char** argv) {
 	std::string init_state = line.substr(15);
 
 	// initialize state
-	std::set<long> state;
-	std::set<long> state_next;
+	std::set<pot_num_t>* state = new std::set<pot_num_t>();
+	std::set<pot_num_t>* state_next = new std::set<pot_num_t>();
+	std::set<pot_num_t> tried;
 
-	for(unsigned long idx = 0; idx < init_state.size(); ++idx) {
+	for(pot_num_t idx = 0; idx < (pot_num_t) init_state.size(); ++idx) {
 		if (init_state[idx] == '#') {
-			state.insert(idx);
+			state->insert(idx);
 		}
 	}
 
@@ -144,48 +181,75 @@ int main(int argc, char** argv) {
 
 	if(verbose) {
 		std::cout << "Read in rules are:" << std::endl;
-		for(unsigned long idx=0; idx < rules.size(); ++idx) {
+		for(pot_num_t idx=0; idx < (pot_num_t) rules.size(); ++idx) {
 			rules[idx].print();
 		}
 	}
 
 	if(verbose) {
 		std::cout << std::setw(3) << std::setfill(' ') << 0 << ": ";
-		print_state(state, num_places);
+		print_state(*state, min, max);
 	}
-	long num_gen = 50000000000;
-	long step = 0;
+
+	pot_num_t step = 0;
 	while(step < num_gen) {
-		for(long i=2; i<num_places-2; ++i) {
-			bool rule_match = false;
-			for(auto rule_it = rules.begin(); rule_it != rules.end(); ++rule_it) {
-				if (rule_it->match(state, i)) {
-					rule_match = true;
-					break;
+		// clear the tried set
+		tried.clear();
+		// clear the next set
+		state_next->clear();
+
+		typename std::set<pot_num_t>::const_iterator main_it = state->begin();
+		// Outer loop iterates through the non-zero state elements themselves.
+		while(main_it != state->end()) {
+			pot_num_t center = *main_it;
+			// Inner loop iterates through possible new pots around
+			// the current main_it.
+			std::set<pot_num_t>::const_reverse_iterator temp_it(main_it);
+			// Reverse the iterator at most two steps
+			if(*temp_it > center-2) {
+				++temp_it;
+				if(*temp_it > center-2) {
+					++temp_it;
 				}
 			}
-			if(rule_match) {
-				state_next[i] = true;
-			} else {
-				state_next[i] = false;
+			std::set<pot_num_t>::const_iterator sub_it = main_it;
+			for(pot_num_t i = -2; i <= 2; ++i) {
+				if (!hasElement(tried, center+i)) {
+					bool matched = false;
+					for(auto rule_it = rules.begin(); rule_it != rules.end(); ++rule_it) {
+						std::set<pot_num_t>::const_iterator sub_sub_it = sub_it;
+						if(rule_it->match(*state, sub_sub_it, center+i)) {
+							matched = true;
+							break;
+						}
+					}
+					// Mark down center+i as having been tried
+					tried.insert(center+i);
+					// add it to the next state if a rule matched.
+					if(matched) {
+						state_next->insert(center+i);
+					}
+				}
 			}
+			// Advance main iterator
+			++main_it;
 		}
-		bool* state_temp = state;
+
 		// Swap states.
+		std::set<pot_num_t>* state_temp = state;
 		state = state_next;
 		state_next = state_temp;
+
 		if(verbose) {
 			std::cout << std::setw(3) << std::setfill(' ') << step+1 << ": ";
-			print_state(state, num_places);
+			print_state(*state, min, max);
 		}
 		++step;
 	}
 
-	long pot_sum = 0;
-	for(long i=0; i< num_places; ++i) {
-		if(state[i]) {
-			pot_sum += idx_to_num(i);
-		}
+	pot_num_t pot_sum = 0;
+	for(auto it = state->cbegin(); it != state->cend(); ++it) {
+		pot_sum += *it;
 	}
 	std::cout << "The sum of all pot numbers is: " << pot_sum << std::endl;
 
