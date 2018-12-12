@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
 	auto check_and_add_inf_coord = [&coords, &inf_coords](int x, int y) {
 		int nearest_idx = getClosest(coordinate(x, y), coords);
 		if (nearest_idx >= 0) {
-			if(!hasElement(inf_coords.begin(), inf_coords.end(), nearest_idx)) {
+			if(!hasElement(inf_coords, nearest_idx)) {
 				inf_coords.push_back(nearest_idx);
 			}
 		}
@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
 			for(int x_idx=0; x_idx < max_x+min_x+1; ++x_idx) {
 				int x_c = get_x(x_idx);
 				int y_c = get_y(y_idx);
-				if(hasElement(coords.begin(), coords.end(), coordinate(x_c, y_c))) {
+				if(hasElement(coords, coordinate(x_c, y_c))) {
 					std::cout << getCoordLabel(closestGridId[x_idx][y_idx]);
 				} else {
 					std::cout << getLabel(closestGridId[x_idx][y_idx]);
@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
 	for(int y_idx=0;  y_idx < max_y+min_y+1; ++y_idx) {
 		for(int x_idx=0; x_idx < max_x+min_x+1; ++x_idx) {
 			int nearest_idx = closestGridId[x_idx][y_idx];
-			if(!hasElement(inf_coords.begin(), inf_coords.end(), nearest_idx)) {
+			if(!hasElement(inf_coords, nearest_idx)) {
 				finite_areas[nearest_idx] += 1;
 			}
 		}

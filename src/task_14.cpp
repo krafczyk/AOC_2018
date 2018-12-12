@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
 			// The label we're checking for
 			char check_label = map_it->first;
 			// See if it's already an option
-			if (hasElement(options.begin(), options.end(), check_label)) {
+			if (hasElement(options, check_label)) {
 				continue;
 			}
 			// See if its in progress
@@ -201,13 +201,13 @@ int main(int argc, char** argv) {
 				continue;
 			}
 			// See if it's already completed
-			if (hasElement(completed.begin(), completed.end(), check_label)) {
+			if (hasElement(completed, check_label)) {
 				continue;
 			}
 			// Okay, check if the dependencies are completed
 			bool depsComplete = true;
 			for(auto dep_it = map_it->second.begin(); dep_it != map_it->second.end(); ++dep_it) {
-				if(!hasElement(completed.begin(), completed.end(), *dep_it)) {
+				if(!hasElement(completed, *dep_it)) {
 					depsComplete = false;
 					break;
 				}
@@ -222,7 +222,7 @@ int main(int argc, char** argv) {
 	// Check solution, are all steps completed?
 	bool problem = false;
 	for(auto uit = unique_labels.begin(); uit != unique_labels.end(); ++uit) {
-		if (!hasElement(completed.begin(), completed.end(), *uit)) {
+		if (!hasElement(completed, *uit)) {
 			std::cerr << "Error! the element " << *uit << " wasn't in the answer!!" << std::endl;
 			problem = true;
 		}
