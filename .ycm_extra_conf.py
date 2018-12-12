@@ -27,7 +27,7 @@ flags = [
 '-Werror',
 '-fexceptions',
 '-DNDEBUG',
-'-DYCM,
+'-DYCM',
 '-I',
 'utilities',
 # THIS IS IMPORTANT! Without a "-std=<something>" flag, clang won't know which
