@@ -30,9 +30,9 @@ std::string get_last_vals(const std::vector<int>& scores, size_t num) {
 	return answer;
 }
 
-size_t get_pattern_idx(const std::vector<int>& scores, const std::vector<int>& pattern) {
+size_t get_pattern_idx(const std::vector<int>& scores, const std::vector<int>& pattern, size_t last_checked) {
 	if(scores.size() > pattern.size()) {
-		for(size_t idx = 0; idx < scores.size()-pattern.size(); ++idx) {
+		for(size_t idx = last_checked; idx < scores.size()-pattern.size(); ++idx) {
 			bool match = true;
 			for(size_t idx_2 = 0; idx_2 < pattern.size(); ++idx_2) {
 				if(scores[idx+idx_2] != pattern[idx_2]) {
@@ -83,7 +83,11 @@ int main(int argc, char** argv) {
 	size_t elf_idx_1 = 0;
 	size_t elf_idx_2 = 1;
 	size_t iteration_count = 0;
-	while((get_pattern_idx(recipies, pattern_expected)==std::numeric_limits<size_t>::max())&&((!iteration_limit_passed)||(iteration_count < iteration_limit))) {
+	size_t last_checked = 0;
+	while((get_pattern_idx(recipies, pattern_expected, last_checked)==std::numeric_limits<size_t>::max())&&((!iteration_limit_passed)||(iteration_count < iteration_limit))) {
+		if(recipies.size() > pattern.size()) {
+			last_checked = recipies.size()-pattern.size();
+		}
 		if(verbose) {
 			print_scores(recipies, elf_idx_1, elf_idx_2);
 		}
@@ -99,7 +103,7 @@ int main(int argc, char** argv) {
 		iteration_count += 1;
 	}
 
-	size_t pattern_idx = get_pattern_idx(recipies, pattern_expected);
+	size_t pattern_idx = get_pattern_idx(recipies, pattern_expected, last_checked);
 
 	std::cout << "The pattern " << pattern << " occured after " << pattern_idx << " entries." << std::endl;
 	if(expected_passed) {
