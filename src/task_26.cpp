@@ -34,11 +34,12 @@ class track_map {
 
 class cart {
 	public:
-		cart(size_t line, size_t x, char state) {
+		cart(size_t line, size_t x, char state, size_t id) {
 			this->line = line;
 			this->x = x;
 			set_direction(state);
 			this->turn_state = 0;
+			this->id = id;
 		}
 		bool operator<(const cart& rhs) const {
 			if (this->line < rhs.line) {
@@ -68,6 +69,9 @@ class cart {
 		}
 		size_t get_x() const {
 			return this->x;
+		}
+		size_t get_id() const {
+			return this->id;
 		}
 		void advance(const track_map& map) {
 			// Move cart on track.
@@ -170,6 +174,7 @@ class cart {
 			this->direction = this->direction%4;
 		}
 	private:
+		size_t id;
 		size_t line;
 		size_t x;
 		int turn_state;
@@ -264,6 +269,7 @@ int main(int argc, char** argv) {
 	// Create track map and get carts.
 	track_map map(num_lines, line_size);
 	std::vector<cart> carts;
+	size_t cart_counter = 0;
 	for(size_t line_idx = 0; line_idx < num_lines; ++line_idx) {
 		for(size_t idx = 0; idx < line_size; ++idx) {
 			char the_char = input_data[line_idx][idx];
@@ -285,7 +291,8 @@ int main(int argc, char** argv) {
 					std::cerr << "Issue creating cart!!" << std::endl;
 					return -1;
 				}
-				carts.push_back(cart(line_idx, idx, cart_char));
+				carts.push_back(cart(line_idx, idx, cart_char, cart_counter));
+				++cart_counter;
 			}
 			map.assign(line_idx,idx) = the_char;
 		}
@@ -297,7 +304,7 @@ int main(int argc, char** argv) {
 	}
 
 	size_t steps = 0;
-	while(carts.size() > 1) {
+	while((carts.size() > 1)&&(steps < max_steps)) {
 		// Sort the carts
 		std::sort(carts.begin(), carts.end());
 
@@ -310,7 +317,7 @@ int main(int argc, char** argv) {
 			auto second_cart_it = carts.begin();
 			bool collision = false;
 			while(second_cart_it != carts.end()) {
-				if(second_cart_it == cart_it) {
+				if(second_cart_it->get_id() == cart_it->get_id()) {
 					// skip the current cart.
 					++second_cart_it;
 					continue;
@@ -318,6 +325,10 @@ int main(int argc, char** argv) {
 					if(*second_cart_it == *cart_it) {
 						// Remove collided cart
 						collision = true;
+						if(second_cart_it < cart_it) {
+							// swap the iterators to avoid invalidating
+							std::swap(cart_it, second_cart_it);
+						}
 						second_cart_it = carts.erase(second_cart_it);
 					} else {
 						// Advance normally
@@ -337,10 +348,14 @@ int main(int argc, char** argv) {
 		++steps;
 	}
 
-	// Print state
-	std::cout << "Last cart detected at " << carts[0].get_x() << "," << carts[0].get_line() << " on step " << steps+1 << std::endl;
 	if(verbose) {
+		std::cout << "Final state" << std::endl;
 		print_state(map, num_lines, line_size, carts);
+	}
+
+	// Print state
+	if(carts.size() == 1) {
+		std::cout << "Last cart detected at " << carts[0].get_x() << "," << carts[0].get_line() << " on step " << steps+1 << std::endl;
 	}
 
 	return 0;
