@@ -14,14 +14,35 @@ typedef int dir_t;
 
 class game_map;
 class entity;
+class position;
+
+template<typename Iter>
+void print_map_with_markers_helper(const game_map& map, const std::vector<entity>& entities, const Iter& begin, const Iter& end, char tile);
+template<typename C>
+void print_map_with_markers(const game_map& map, const std::vector<entity>& entities, const C& positions, char tile);
 
 class direction {
 	public:
-		direction(dir_t d) {
+		direction(dir_t d=0) {
 			this->d = d;
 		}
-		direction(direction& rhs) = default;
+		direction(const direction& rhs) = default;
 		direction(direction&& rhs) = default;
+		direction& operator=(const direction& rhs) = default;
+		bool operator==(const direction& rhs) const {
+			if(this->d == rhs.d) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		bool operator!=(const direction& rhs) const {
+			if(this->d != rhs.d) {
+				return true;
+			} else {
+				return false;
+			}
+		}
 		void turn_cw() {
 			this->d -= 1;
 			if(this->d < 0) {
@@ -42,8 +63,17 @@ class direction {
 		static const dir_t num_dirs = 4;
 };
 
+static const direction east(0);
+static const direction north(1);
+static const direction west(2);
+static const direction south(3);
+
 class position {
 	public:
+		position() {
+			this->line_idx = 0;
+			this->x_idx = 0;
+		}
 		position(pos_idx_t line_idx, pos_idx_t x_idx) {
 			this->line_idx = line_idx;
 			this->x_idx = x_idx;
@@ -64,8 +94,9 @@ class position {
 				this->x_idx = 0;
 			}
 		}
-		position(position& rhs) = default;
+		position(const position& rhs) = default;
 		position(position&& rhs) = default;
+		position& operator=(const position& rhs) = default;
 		bool operator==(const position& rhs) const {
 			if((this->line_idx == rhs.line_idx)&&(this->x_idx == rhs.x_idx)) {
 				return true;
@@ -84,6 +115,31 @@ class position {
 		}
 		position operator-(const position& rhs) const {
 			return position(this->line_idx-rhs.line_idx, this->x_idx-rhs.x_idx);
+		}
+		position operator+(const direction& rhs) const {
+			return (*this)+position(rhs);
+		}
+		position operator-(const direction& rhs) const {
+			return (*this)-position(rhs);
+		}
+		bool operator<(const position& rhs) const {
+			if(this->line_idx < rhs.line_idx) {
+				return true;
+			} else if(this->line_idx == rhs.line_idx) {
+				if(this->x_idx < rhs.x_idx) {
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
+		pos_idx_t get_line_idx() const {
+			return this->line_idx;
+		}
+		pos_idx_t get_x_idx() const {
+			return this->x_idx;
 		}
 		pos_idx_t dist(const position& in) const {
 			pos_idx_t line_diff = 0;
@@ -126,6 +182,9 @@ class game_map {
 		char operator()(pos_idx_t line_idx, pos_idx_t idx) const {
 			return this->map[this->line_len*line_idx+idx];
 		}
+		char get_tile(const position& pos) const {
+			return (*this)(pos.get_line_idx(), pos.get_x_idx());
+		}
 		char& assign(pos_idx_t line_idx, pos_idx_t idx) {
 			return this->map[this->line_len*line_idx+idx];
 		}
@@ -151,32 +210,67 @@ class game_map {
 
 class entity {
 	public:
-		entity(pos_idx_t line_idx, pos_idx_t x_idx, char team) {
-			this->line_idx =line_idx;
-			this->x_idx = x_idx;
+		entity(pos_idx_t line_idx, pos_idx_t x_idx, char team, int id) {
+			pos = position(line_idx, x_idx);
 			this->team = team;
+			this->hp = 200;
+			this->ap = 3;
+			this->id = id;
 		}
-		pos_idx_t get_line_idx() const {
-			return this->line_idx;
-		}
-		pos_idx_t get_x_idx() const {
-			return this->x_idx;
+		position get_pos() const {
+			return this->pos;
 		}
 		char get_team() const {
 			return this->team;
 		}
+		int get_id() const {
+			return this->id;
+		}
+		void take_turn(const game_map& map, std::vector<entity>&entities) {
+			// come up with positions to get to
+			std::set<position> candidates;
+			for(size_t e_idx = 0; e_idx < entities.size(); ++e_idx) {
+				if(entities[e_idx].get_id() != this->get_id()) {
+					if (entities[e_idx].get_team() != this->get_team()) {
+						direction dir = east;
+						do {
+							position new_candidate = entities[e_idx].get_pos()+dir;
+							if(map.get_tile(new_candidate) == '.') {
+								// Check that no entity overlaps here
+								bool no_entity = true;
+								for(size_t e_idx_2 = 0; e_idx_2 < entities.size(); ++e_idx_2) {
+									if(new_candidate == entities[e_idx_2].get_pos()) {
+										no_entity = false;
+										break;
+									}
+								}
+								if(no_entity) {
+									candidates.insert(new_candidate);
+								}
+							}
+							// Advance direction
+							dir.turn_cw();
+						} while(dir != east);
+					}
+				}
+			}
+			print_map_with_markers(map, entities, candidates, '?');
+		}
 	private:
-		pos_idx_t line_idx;
-		pos_idx_t x_idx;
+		position pos;
 		char team;
+		int hp;
+		int ap;
+		int id;
 };
 
 void print_map(const game_map& map, const std::vector<entity>& entities) {
 	for(pos_idx_t line_idx = 0; line_idx < map.get_num_lines(); ++line_idx) {
 		for(pos_idx_t idx = 0; idx < map.get_line_len(); ++idx) {
 			char the_char = map(line_idx, idx);
+			position current_pos(line_idx, idx);
 			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-				if((line_idx == entity_it->get_line_idx())&&(idx == entity_it->get_x_idx())) {
+				if(current_pos == entity_it->get_pos()) {
 					the_char = entity_it->get_team();
 				}
 			}
@@ -184,8 +278,40 @@ void print_map(const game_map& map, const std::vector<entity>& entities) {
 		}
 		std::cout << std::endl;
 	}
-
 }
+
+// This is really disgusting. I wish concepts was in clang already
+template<typename ConstIter>
+void print_map_with_markers_helper(const game_map& map, const std::vector<entity>& entities, const ConstIter& begin, const ConstIter& end, char tile) {
+	for(size_t line_idx=0; line_idx < map.get_num_lines(); ++line_idx) {
+		for(size_t x_idx = 0; x_idx < map.get_line_len(); ++x_idx) {
+			position current_pos(line_idx, x_idx);
+			char the_char = map.get_tile(current_pos);
+			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+				if(current_pos == entity_it->get_pos()) {
+					the_char = entity_it->get_team();
+				}
+			}
+			ConstIter it = begin;
+			while(it != end) {
+				if((*it) == current_pos) {
+					the_char = tile;
+				}
+				++it;
+			}
+			std::cout << the_char;
+		}
+		std::cout << std::endl;
+	}
+}
+
+// This is really disgusting. I wish concepts was in clang already
+template<typename C>
+void print_map_with_markers(const game_map& map, const std::vector<entity>& entities, const C& positions, char tile) {
+	print_map_with_markers_helper(map, entities, positions.cbegin(), positions.cend(), tile);
+}
+
+
 
 int main(int argc, char** argv) {
 	// Parse Arguments
@@ -220,7 +346,7 @@ int main(int argc, char** argv) {
 		for(pos_idx_t x_idx = 0; x_idx < map.get_line_len(); ++x_idx) {
 			char tile_char = input_data[line_idx][x_idx];
 			if((tile_char == 'G')||tile_char == 'E') {
-				entities.push_back(entity(line_idx, x_idx, tile_char));
+				entities.push_back(entity(line_idx, x_idx, tile_char, entities.size()));
 				tile_char = '.';
 			}
 			map.assign(line_idx, x_idx) = tile_char;
@@ -232,7 +358,7 @@ int main(int argc, char** argv) {
 		print_map(map, entities);
 	}
 
-
+	entities[0].take_turn(map, entities);
 
 	return 0;
 }

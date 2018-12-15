@@ -8,8 +8,14 @@
 
 template<typename T>
 concept bool ConstIterable = requires(T cont) {
-	{ cont.begin() } -> typename T::const_iterator;
-	{ cont.end() } -> typename T::const_iterator;
+	{ cont.cbegin() } -> typename T::const_iterator;
+	{ cont.cend() } -> typename T::const_iterator;
+};
+
+template<typename T>
+concept bool Iterable = requires(T cont) {
+	{ cont.begin() } -> typename T::iterator;
+	{ cont.end() } -> typename T::iterator;
 };
 
 template<ConstIterable container, typename type>
