@@ -227,6 +227,10 @@ class entity {
 			return this->id;
 		}
 		void take_turn(const game_map& map, std::vector<entity>&entities) {
+			this->move(map, entities);
+			this->attack(entities);
+		}
+		void move(const game_map& map, std::vector<entity>&entities) {
 			// come up with positions to get to
 			std::set<position> candidates;
 			for(size_t e_idx = 0; e_idx < entities.size(); ++e_idx) {
@@ -256,6 +260,9 @@ class entity {
 			}
 			print_map_with_markers(map, entities, candidates, '?');
 		}
+		void attack(std::vector<entity>& entities [[maybe_unused]]) {
+		}
+
 	private:
 		position pos;
 		char team;
