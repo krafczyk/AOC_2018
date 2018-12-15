@@ -156,14 +156,20 @@ class position {
 			}
 			return line_diff+x_diff;
 		}
+		std::string get_str() const {
+			std::stringstream ss;
+			ss << this->x_idx << "," << this->line_idx;
+			return ss.str();
+		}
 	private:
 		pos_idx_t line_idx;
 		pos_idx_t x_idx;
 };
 
-// Implemenattion of A*?
-//void find_fastest_path(direction& dir, pos_idx_t& cost, const position& A, const position& B) {
-//}
+// Implementation of A*?
+void find_fastest_path(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], direction& dir [[maybe_unused]], pos_idx_t& cost [[maybe_unused]], const position& A, const position& B) {
+	std::cout << "Finding shortest path between " << A.get_str() << " and " << B.get_str() << std::endl;
+}
 
 class game_map {
 	public:
@@ -258,7 +264,30 @@ class entity {
 					}
 				}
 			}
-			print_map_with_markers(map, entities, candidates, '?');
+			// Verify that candidates are correct
+			//print_map_with_markers(map, entities, candidates, '?');
+
+			// --- Calculating paths and costs ---
+			// Calculate cost and movement direction to each candidate
+			// Create temp infrastructure
+			class path_cost {
+				public:
+					path_cost(const pos_idx_t cost, const direction first_step, const position destination) {
+						this->cost = cost;
+						this->first_step = first_step;
+						this->destination = destination;
+					}
+					pos_idx_t cost;
+					direction first_step;
+					position destination;
+			};
+			std::vector<path_cost> path_candidates;
+			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
+				direction first_step;
+				pos_idx_t cost;
+				find_fastest_path(map, entities, first_step, cost, this->get_pos(), *candidate_it);
+				//path_candidates.push_back(path_cost(cost, first_step, *candidate_it));
+			}
 		}
 		void attack(std::vector<entity>& entities [[maybe_unused]]) {
 		}
