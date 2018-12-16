@@ -21,6 +21,8 @@ void print_map_with_markers_helper(const game_map& map, const std::vector<entity
 template<typename C>
 void print_map_with_markers(const game_map& map, const std::vector<entity>& entities, const C& positions, char tile);
 
+std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B);
+
 class direction {
 	public:
 		direction(dir_t d=0) {
@@ -166,11 +168,6 @@ class position {
 		pos_idx_t x_idx;
 };
 
-// Implementation of A*?
-void find_fastest_path(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], direction& dir [[maybe_unused]], pos_idx_t& cost [[maybe_unused]], const position& A, const position& B) {
-	std::cout << "Finding shortest path between " << A.get_str() << " and " << B.get_str() << std::endl;
-}
-
 class game_map {
 	public:
 		game_map(pos_idx_t num_lines, pos_idx_t line_len) {
@@ -283,9 +280,8 @@ class entity {
 			};
 			std::vector<path_cost> path_candidates;
 			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
-				direction first_step;
-				pos_idx_t cost;
-				find_fastest_path(map, entities, first_step, cost, this->get_pos(), *candidate_it);
+				std::vector<position> path;
+				path = A_Star(map, entities, this->get_pos(), *candidate_it);
 				//path_candidates.push_back(path_cost(cost, first_step, *candidate_it));
 			}
 		}
@@ -299,6 +295,96 @@ class entity {
 		int ap;
 		int id;
 };
+
+// Implementation of A*?
+std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B) {
+	std::cout << "Finding shortest path between " << A.get_str() << " and " << B.get_str() << std::endl;
+	// The set of nodes already evaluted
+	std::set<position> closedSet;
+
+	// The set of currently discovered nodes that are not evaluated yet
+	std::set<position> openSet;
+	openSet.insert(A);
+
+	// A map from node to node 
+	std::map<position,position> cameFrom;
+
+	// Cost of going from the start to a given node.
+	std::map<position,pos_idx_t>  gScore;
+	gScore[A] = 0;
+
+	std::map<position,pos_idx_t> fScore;
+	fScore[A] = A.dist(B);
+
+	while(openSet.size() != 0) {
+		// Find openSet element with the lowest fScore
+		std::set<position> current_candidates;
+		pos_idx_t fscore = std::numeric_limits<pos_idx_t>::max();
+		for(auto it = openSet.cbegin(); it != openSet.cend(); ++it) {
+			if (fScore[*it] < fscore) {
+				// Clear the current set
+				current_candidates.clear();
+				fscore = fScore[*it];
+				current_candidates.insert(*it);
+			} else if(fScore[*it] == fscore) {
+				current_candidates.insert(*it);
+			}
+		}
+		// Pick the first in the list
+		position current = *current_candidates.begin();
+		std::vector<position> path;
+		// Check whether we've reached the goal
+		if(current == B) {
+			// Build path up
+			path.clear();
+			path.push_back(B);
+			do {
+				path.insert(path.begin(), cameFrom[path[0]]);
+			} while (path[0] != A);
+			return path;
+		}
+		openSet.erase(std::find(openSet.begin(), openSet.end(), current)); // Remove the current node from the open set
+		closedSet.insert(current); // The current node to the closed set
+
+		direction dir = east;
+		do {
+			// Check each neighbor
+			position neighbor = current+dir;
+			// Skip nodes in the closed set already
+			if(hasElement(closedSet, neighbor)) {
+				continue;
+			}
+			pos_idx_t tentative_gScore = gScore[current]+1;
+			// Check if the neighbor is a wall
+			if(map.get_tile(neighbor) == '#') {
+				tentative_gScore = std::numeric_limits<pos_idx_t>::max();
+			}
+			// Check if the neighbor is an entity
+			bool collision = false;
+			for(pos_idx_t idx = 0; idx < entities.size(); ++idx) {
+				if(entities[idx].get_pos() == neighbor) {
+					collision = true;
+					break;
+				}
+			}
+			if(collision) {
+				tentative_gScore = std::numeric_limits<pos_idx_t>::max();
+			}
+			if(!hasElement(openSet, neighbor)) {
+				openSet.insert(neighbor);
+			} else if (tentative_gScore > gScore[neighbor]) {
+				continue;
+			}
+
+			// This path is the best until now. Record it!
+			cameFrom[neighbor] = current;
+			gScore[neighbor] = tentative_gScore;
+			fScore[neighbor] = gScore[neighbor]+neighbor.dist(B);
+		} while(dir != east);
+	}
+	// If we reach this point, then we know that no path exists.
+	return std::vector<position>();
+}
 
 void print_map(const game_map& map, const std::vector<entity>& entities) {
 	for(pos_idx_t line_idx = 0; line_idx < map.get_num_lines(); ++line_idx) {
