@@ -670,10 +670,15 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+	int test_val = 0;
+	bool test_val_passed = false;
 	size_t num_moves = 0;
+	bool progress = false;
 	ArgParse::ArgParser Parser("Task 29");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-n/--num-moves", "Number of moves", &num_moves, ArgParse::Argument::Optional);
+	Parser.AddArgument("-t/--test-val", "Expected value", &test_val, ArgParse::Argument::Optional, &test_val_passed);
+	Parser.AddArgument("-p/--progress", "Show progress of battle", &progress);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -765,6 +770,20 @@ int main(int argc, char** argv) {
 		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
 			unique_teams.insert(entity_it->get_team());
 		}
+		// Show progress
+		if(progress&&(steps%20 == 0)) {
+			std::map<char,int> summary;
+			std::map<char,int> num;
+			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+				summary[entity_it->get_team()] += entity_it->get_hp();
+				num[entity_it->get_team()] += 1;
+			}
+			std::cout << "After " << steps << " Steps:";
+			for(auto summary_it = summary.cbegin(); summary_it != summary.cend(); ++summary_it) {
+				std::cout << " " << summary_it->first << ": " << num[summary_it->first] << " " << summary_it->second;
+			}
+			std::cout << std::endl;
+		}
 		++steps;
 
 	}
@@ -785,6 +804,14 @@ int main(int argc, char** argv) {
 	std::cout << "Combat ends after " << steps-1 << " full rounds" << std::endl;
 	std::cout << name_map[entities[0].get_team()] << " win with " << hp_sum << " total hit points" <<  std::endl;
 	std::cout << "The outcome is: " << (steps-1)*hp_sum << std::endl;
+
+	if(test_val_passed) {
+		if((int) (steps-1)*hp_sum == test_val) {
+			std::cout << "Test Passed!" << std::endl;
+		} else {
+			std::cout << "Test Failed!" << std::endl;
+		}
+	}
 
 	return 0;
 }
