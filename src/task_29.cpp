@@ -23,6 +23,7 @@ template<typename C>
 void print_map_with_markers(const game_map& map, const std::vector<entity>& entities, const C& positions, char tile);
 
 std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B);
+std::vector<position> find_shortest_path(const game_map& map, const std::vector<entity>& entities, const position& A, const position& B, const std::set<position>& visited);
 
 class direction {
 	public:
@@ -230,6 +231,12 @@ class entity {
 		int get_id() const {
 			return this->id;
 		}
+		int get_hp() const {
+			return this->hp;
+		}
+		int get_ap() const {
+			return this->ap;
+		}
 		void take_turn(const game_map& map, std::vector<entity>&entities) {
 			this->move(map, entities);
 			this->attack(entities);
@@ -247,9 +254,12 @@ class entity {
 								// Check that no entity overlaps here
 								bool no_entity = true;
 								for(size_t e_idx_2 = 0; e_idx_2 < entities.size(); ++e_idx_2) {
-									if(new_candidate == entities[e_idx_2].get_pos()) {
-										no_entity = false;
-										break;
+									// Need to allow candidates to overlap with self.
+									if(entities[e_idx_2].get_id() != this->get_id()) {
+										if(new_candidate == entities[e_idx_2].get_pos()) {
+											no_entity = false;
+											break;
+										}
 									}
 								}
 								if(no_entity) {
@@ -262,31 +272,101 @@ class entity {
 					}
 				}
 			}
+
+			// Quit early if there are no candidates
+			if(candidates.size() == 0) {
+				return;
+			}
+
 			// Verify that candidates are correct
 			//print_map_with_markers(map, entities, candidates, '?');
+
+			// --- Check that we aren't already on a candidate
+			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
+				if(*candidate_it == this->get_pos()) {
+					//std::cout << "Already on a candidate" << std::endl;
+					return;
+				}
+			}
 
 			// --- Calculating paths and costs ---
 			// Calculate cost and movement direction to each candidate
 			// Create temp infrastructure
-			class path_cost {
-				public:
-					path_cost(const pos_idx_t cost, const direction first_step, const position destination) {
-						this->cost = cost;
-						this->first_step = first_step;
-						this->destination = destination;
-					}
-					pos_idx_t cost;
-					direction first_step;
-					position destination;
-			};
-			std::vector<path_cost> path_candidates;
+			typedef std::pair<position,std::vector<position>> path_def;
+			std::set<path_def> path_candidates;
+			size_t best_length = std::numeric_limits<size_t>::max();
+			//std::cout << "Current Position " << this->get_pos().get_str() << std::endl;
+			//std::vector<position> temp;
+			//temp.push_back(this->get_pos());
+			//print_map_with_markers(map, entities, temp, 'x');
 			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
-				std::vector<position> path;
-				path = A_Star(map, entities, this->get_pos(), *candidate_it);
-				//path_candidates.push_back(path_cost(cost, first_step, *candidate_it));
+				std::vector<position> path = find_shortest_path(map, entities, this->get_pos(), *candidate_it, std::set<position>());
+				// Skip unreachable points
+				if(path.size() == 0) {
+					continue;
+				}
+				//std::cout << "Path Candidate: " << path.size() << " to " << candidate_it->get_str() << std::endl;
+				//for(size_t p_it = 0; p_it < path.size(); ++p_it) {
+				//	std::cout << path[p_it].get_str() << std::endl;
+				//}
+				if(path.size() < best_length) {
+					path_candidates.clear();
+					path_candidates.insert(path_def(*candidate_it, path));
+					best_length = path.size();
+				} else if (path.size() == best_length) {
+					path_candidates.insert(path_def(*candidate_it, path));
+				}
 			}
+			if(path_candidates.size() == 0) {
+				// No candidate is reachable!
+				return;
+			}
+			//std::cout << "Best Paths: Num: " << path_candidates.size() << std::endl;
+			//for(auto it = path_candidates.begin(); it != path_candidates.end(); ++it) {
+			//	std::cout << "Candidate: " << it->first.get_str() << std::endl;
+			//	for(size_t p_it = 0; p_it < it->second.size(); ++p_it) {
+			//		std::cout << it->second[p_it].get_str() << std::endl;
+			//	}
+			//	print_map_with_markers(map, entities, it->second, 'P');
+			//}
+			// Pick first path and advance position!
+			this->pos = path_candidates.begin()->second[0];
 		}
 		void attack(std::vector<entity>& entities [[maybe_unused]]) {
+			typedef std::pair<position, size_t> target_info;
+			std::set<target_info> targets;
+			int lowest_health = std::numeric_limits<int>::max();
+			direction dir = east;
+			do {
+				// Check each neighbor
+				position neighbor = this->pos+dir;
+				// Turn to next direction.
+				dir.turn_cw();
+
+				for(size_t entity_idx = 0; entity_idx != entities.size(); ++entity_idx) {
+					entity& the_entity = entities[entity_idx];
+					// Don't attack yourself silly!
+					if(the_entity.get_id() != this->get_id()) {
+						// Don't attack allies silly!
+						if(the_entity.get_team() != this->get_team()) {
+							if(the_entity.get_pos() == neighbor) {
+								if(the_entity.get_hp() < lowest_health) {
+									targets.clear();
+									targets.insert(target_info(entities[entity_idx].get_pos(), entity_idx));
+									lowest_health = the_entity.get_hp();
+								} else if (the_entity.get_hp() == lowest_health) {
+									targets.insert(target_info(entities[entity_idx].get_pos(), entity_idx));
+								}
+							}
+						}
+					}
+				}
+			} while(dir != east);
+
+			if(targets.size() != 0) {
+				// Attack first target
+				entities[targets.begin()->second].hp -= this->ap;
+			}
 		}
 
 	private:
@@ -296,6 +376,117 @@ class entity {
 		int ap;
 		int id;
 };
+
+std::vector<position> find_shortest_path(const game_map& map, const std::vector<entity>& entities, const position& A, const position& B, const std::set<position>& visited) {
+	std::vector<position> path;
+	// build neighbor candidates
+	std::set<position> neighbors;
+
+	direction dir = east;
+	do {
+		// Check each neighbor
+		position neighbor = A+dir;
+		// Turn to next direction.
+		dir.turn_cw();
+
+		// Determine if it's a wall
+		if(map.get_tile(neighbor) == '#') {
+			continue;
+		}
+		// Determine if it's been visited
+		if(hasElement(visited, neighbor)) {
+			continue;
+		}
+		// Determine if it has an entity on it
+		bool collision = false;
+		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+			if(entity_it->get_pos() == neighbor) {
+				collision = true;
+				break;
+			}
+		}
+		if(collision) {
+			continue;
+		}
+
+		// These neighbors are good candidates
+		neighbors.insert(neighbor);
+
+	} while(dir != east);
+
+	if(neighbors.size() == 0) {
+		// No path forward..
+		return path;
+	}
+
+	// We now need to choose one of the neighbors.
+	typedef std::pair<position,std::vector<position>> path_summary;
+	std::set<path_summary> best_paths;
+	pos_idx_t best_cost = std::numeric_limits<pos_idx_t>::max();
+
+	while(neighbors.size() != 0) {
+		// Find neighbor which has best estimated score.
+		// Score must be better at least as good as previously recorded concrete paths.
+
+		// Create neighbor sublist with least distance estimate
+		std::set<position> closest_neighbors;
+		pos_idx_t lowest_estimate = std::numeric_limits<pos_idx_t>::max();
+		for(auto n_it = neighbors.cbegin(); n_it != neighbors.cend(); ++n_it) {
+			pos_idx_t n_dist = n_it->dist(B);
+			if(n_dist < lowest_estimate) {
+				closest_neighbors.clear();
+				closest_neighbors.insert(*n_it);
+				lowest_estimate = n_dist;
+			} else if (n_dist == lowest_estimate) {
+				closest_neighbors.insert(*n_it);
+			}
+		}
+
+		if (lowest_estimate == 0) {
+			// We've found the goal! Quit here!
+			path.push_back(*closest_neighbors.begin());
+			return path;
+		}
+
+		// Quit early if we've already found a better path than these are estimated to be
+		if (lowest_estimate > best_cost) {
+			break;
+		}
+
+		// Pick the closest neighbor who comes first
+		position picked_neighbor = *closest_neighbors.begin();
+
+		// Remove from considered neighbors.
+		neighbors.erase(std::find(neighbors.begin(), neighbors.end(), picked_neighbor));
+
+		std::set<position> new_visited = visited;
+		new_visited.insert(A);
+		std::vector<position> n_path = find_shortest_path(map, entities, picked_neighbor, B, new_visited);
+		if(n_path.size() == 0) {
+			// We don't add empty paths.. i.e. this path couldn't reach the destination.
+			continue;
+		} else {
+			if (n_path.size() < best_cost) {
+				best_paths.clear();
+				best_paths.insert(path_summary(picked_neighbor, n_path));
+				best_cost = n_path.size();
+			} else if (n_path.size() == best_cost) {
+				best_paths.insert(path_summary(picked_neighbor, n_path));
+			}
+		}
+	}
+	// We should have a set of best paths
+	if(best_paths.size() == 0) {
+		// No paths to solution..
+		return path;
+	} else {
+		// With tied paths, always choose the 'first' one.
+		auto best_path = best_paths.begin();
+		path.push_back(best_path->first);
+		path.insert(path.end(), best_path->second.begin(), best_path->second.end());
+		return path;
+	}
+}
 
 // Implementation of A*?
 std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B) {
@@ -342,6 +533,11 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 			} else if(fScore[*it] == fscore) {
 				current_candidates.insert(*it);
 			}
+		}
+		// List of candidates
+		std::cout << "Candidate list" << std::endl;
+		for(auto it = current_candidates.cbegin(); it != current_candidates.cend(); ++it) {
+			std::cout << it->get_str() << ": " << fScore[*it] << "," << gScore[*it] << std::endl;
 		}
 		// Pick the first in the list
 		position current = *current_candidates.begin();
@@ -414,15 +610,24 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 
 void print_map(const game_map& map, const std::vector<entity>& entities) {
 	for(pos_idx_t line_idx = 0; line_idx < map.get_num_lines(); ++line_idx) {
+		typedef std::pair<char,int> ent_summary;
+		std::vector<ent_summary> entity_summary;
 		for(pos_idx_t idx = 0; idx < map.get_line_len(); ++idx) {
 			char the_char = map(line_idx, idx);
 			position current_pos(line_idx, idx);
 			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
 				if(current_pos == entity_it->get_pos()) {
 					the_char = entity_it->get_team();
+					entity_summary.push_back(ent_summary(the_char, entity_it->get_hp()));
 				}
 			}
 			std::cout << the_char;
+		}
+		if(entity_summary.size() > 0) {
+			std::cout << " ";
+			for(size_t idx = 0; idx < entity_summary.size(); ++idx) {
+				std::cout << entity_summary[idx].first << "(" << entity_summary[idx].second << "), ";
+			}
 		}
 		std::cout << std::endl;
 	}
@@ -465,8 +670,10 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+	size_t num_moves = 0;
 	ArgParse::ArgParser Parser("Task 29");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+	Parser.AddArgument("-n/--num-moves", "Number of moves", &num_moves, ArgParse::Argument::Optional);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -483,7 +690,7 @@ int main(int argc, char** argv) {
 
 	// Load initial game state
 	std::vector<std::string> input_data;
-	std::string line;
+	std::string line = "";
 	while(std::getline(infile, line)) {
 		input_data.push_back(line);
 	}
@@ -506,14 +713,78 @@ int main(int argc, char** argv) {
 		print_map(map, entities);
 	}
 
-	//entities[0].take_turn(map, entities);
-
-	// Test A*
-	std::vector<position> path = A_Star(map, entities, position(1,1), position(2,3));
-	std::cout << "Path length: " <<  path.size() << std::endl;
-	for(size_t idx = 0; idx < path.size(); ++idx) {
-		std::cout << path[idx].get_str() << std::endl;
+	std::set<char> unique_teams;
+	for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+		unique_teams.insert(entity_it->get_team());
 	}
+	size_t steps = 0;
+	while((unique_teams.size() > 1)&&((num_moves == 0)||(steps < num_moves))) {
+		// We need to be careful. Some entities may be removed during a turn.
+		std::set<int> need_turn;
+		// Fill need_turn with all entities
+		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+			need_turn.insert(entity_it->get_id());
+		}
+		while(need_turn.size() > 0) {
+			// Order entities
+			typedef std::pair<position,size_t> entity_order;
+			std::set<entity_order> total_order;
+			// Insert ordering
+			for(size_t idx = 0; idx < entities.size(); ++idx) {
+				total_order.insert(entity_order(entities[idx].get_pos(), idx));
+			}
+			for(auto order_it  = total_order.begin(); order_it != total_order.end(); ++order_it) {
+				if(hasElement(need_turn, entities[order_it->second].get_id())) {
+					// Take a turn
+					entities[order_it->second].take_turn(map,entities);
+					// Remove from the need turn counter
+					need_turn.erase(std::find(need_turn.begin(), need_turn.end(), entities[order_it->second].get_id()));
+					// Detect whether any entity has died.
+					int dead_unit = -1;
+					for(size_t idx = 0; idx < entities.size(); ++idx) {
+						if(entities[idx].get_hp() <= 0) {
+							dead_unit = entities[idx].get_id();
+							break;
+						}
+					}
+					// Remove a dead unit if necessary.
+					if(dead_unit >= 0) {
+						entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
+						// Remove dead unit from need_turn if it's in there
+						auto dead_need_turn_it = std::find(need_turn.begin(), need_turn.end(), dead_unit);
+						if(dead_need_turn_it != need_turn.end()) {
+							need_turn.erase(dead_need_turn_it);
+						}
+						break;
+					}
+				}
+			}
+		}
+		// Count remaining unique teams
+		unique_teams.clear();
+		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+			unique_teams.insert(entity_it->get_team());
+		}
+		++steps;
+
+	}
+	if(verbose) {
+		std::cout << "----- After Step " << steps << " -----" << std::endl;
+		print_map(map, entities);
+	}
+
+	int hp_sum = 0;
+	for(size_t idx = 0; idx < entities.size(); ++idx) {
+		hp_sum += entities[idx].get_hp();
+	}
+
+	std::map<char,std::string> name_map;
+	name_map['G'] = "Goblins";
+	name_map['E'] = "Elves";
+
+	std::cout << "Combat ends after " << steps-1 << " full rounds" << std::endl;
+	std::cout << name_map[entities[0].get_team()] << " win with " << hp_sum << " total hit points" <<  std::endl;
+	std::cout << "The outcome is: " << (steps-1)*hp_sum << std::endl;
 
 	return 0;
 }
