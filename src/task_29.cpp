@@ -6,6 +6,7 @@
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include <exception>
 #include "ArgParseStandalone.h"
 #include "utilities.h"
 
@@ -316,7 +317,19 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 	std::map<position,pos_idx_t> fScore;
 	fScore[A] = A.dist(B);
 
+
+	size_t lim = 5;
+	size_t iter = 0;
 	while(openSet.size() != 0) {
+		std::cout << "Begin Loop." << openSet.size() << std::endl;
+		std::cout << "OpenSet Diagnostics" << std::endl;
+		for(auto it = openSet.begin(); it != openSet.end(); ++it) {
+			std::cout << it->get_str() << std::endl;
+		}
+		std::cout << "fScore" << std::endl;
+		for(auto it = fScore.begin(); it != fScore.end(); ++it) {
+			std::cout << it->first.get_str() << ": " << it->second << std::endl;
+		}
 		// Find openSet element with the lowest fScore
 		std::set<position> current_candidates;
 		pos_idx_t fscore = std::numeric_limits<pos_idx_t>::max();
@@ -332,6 +345,7 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 		}
 		// Pick the first in the list
 		position current = *current_candidates.begin();
+		std::cout << "Current position: " << current.get_str() << std::endl;
 		std::vector<position> path;
 		// Check whether we've reached the goal
 		if(current == B) {
@@ -350,6 +364,8 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 		do {
 			// Check each neighbor
 			position neighbor = current+dir;
+			// Turn to next direction.
+			dir.turn_cw();
 			// Skip nodes in the closed set already
 			if(hasElement(closedSet, neighbor)) {
 				continue;
@@ -379,8 +395,18 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 			// This path is the best until now. Record it!
 			cameFrom[neighbor] = current;
 			gScore[neighbor] = tentative_gScore;
+			std::cout << "Setting fScore of " << neighbor.get_str() << std::endl;
+			std::cout << "gScore[neighbor]: " << gScore[neighbor] << std::endl;
+			std::cout << "neigbor.dist(B): " << neighbor.dist(B) << std::endl;
 			fScore[neighbor] = gScore[neighbor]+neighbor.dist(B);
+			if(gScore[neighbor] == std::numeric_limits<pos_idx_t>::max()) {
+				fScore[neighbor] = std::numeric_limits<pos_idx_t>::max();
+			}
 		} while(dir != east);
+		if(iter >= lim) {
+			throw std::runtime_error("Quit Early");
+		}
+		++iter;
 	}
 	// If we reach this point, then we know that no path exists.
 	return std::vector<position>();
@@ -480,7 +506,14 @@ int main(int argc, char** argv) {
 		print_map(map, entities);
 	}
 
-	entities[0].take_turn(map, entities);
+	//entities[0].take_turn(map, entities);
+
+	// Test A*
+	std::vector<position> path = A_Star(map, entities, position(1,1), position(2,3));
+	std::cout << "Path length: " <<  path.size() << std::endl;
+	for(size_t idx = 0; idx < path.size(); ++idx) {
+		std::cout << path[idx].get_str() << std::endl;
+	}
 
 	return 0;
 }
