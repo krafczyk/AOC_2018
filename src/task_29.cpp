@@ -242,7 +242,6 @@ class entity {
 			this->attack(entities);
 		}
 		void move(const game_map& map, std::vector<entity>&entities) {
-			std::cout << "Entity " << this->get_id() << " is making a move" << std::endl;
 			// come up with positions to get to
 			typedef std::pair<pos_idx_t,position> candidate_holder;
 			std::set<candidate_holder> candidates;
@@ -302,11 +301,7 @@ class entity {
 			//temp.push_back(this->get_pos());
 			//print_map_with_markers(map, entities, temp, 'x');
 			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
-				std::cout << "Considering candidate " << candidate_it->second.get_str() << std::endl;
-				std::cout << "==================== Starting new pathfinding ====================" << std::endl;
 				std::vector<position> path = A_Star(map, entities, this->get_pos(), candidate_it->second);
-				std::cout << "==================== Ending new pathfinding ====================" << std::endl;
-				throw std::runtime_error("Stop Early!");
 				// Skip unreachable points
 				if(path.size() == 0) {
 					continue;
@@ -529,11 +524,11 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 
 	while(openSet.size() != 0) {
 		// Report the open set
-		std::cout << "--Open Set--" << std::endl;
-		print_map_with_markers(map, entities, openSet, 'o');
+		//std::cout << "--Open Set--" << std::endl;
+		//print_map_with_markers(map, entities, openSet, 'o');
 
-		std::cout << "--Closed Set--" << std::endl;
-		print_map_with_markers(map, entities, closedSet, 'c');
+		//std::cout << "--Closed Set--" << std::endl;
+		//print_map_with_markers(map, entities, closedSet, 'c');
 		// Pick a current position from the open set. which minimizes fScore.
 		std::set<position> current_possibilities;
 		pos_idx_t min_fscore = std::numeric_limits<pos_idx_t>::max();
@@ -547,8 +542,8 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 			}
 		}
 
-		std::cout << "current possibilities" << std::endl;
-		print_map_with_markers(map, entities, current_possibilities, 'p');
+		//std::cout << "current possibilities" << std::endl;
+		//print_map_with_markers(map, entities, current_possibilities, 'p');
 
 		// Possibility: rank also by gScore.
 		position current = *current_possibilities.begin();
@@ -556,9 +551,10 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 		if(current == B) {
 			path.push_back(B);
 			while(std::find(cameFrom[path[0]].cbegin(), cameFrom[path[0]].cend(), A) == cameFrom[path[0]].cend()) {
-				std::cout << "looop" << std::endl;
-				path.push_back(cameFrom[path[0]][0]);
+				path.insert(path.begin(), cameFrom[path[0]][0]);
 			}
+			//std::cout << "Found Path" << std::endl;
+			//print_map_with_markers(map, entities, path, 'P');
 			return path;
 		}
 
@@ -618,6 +614,48 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 	}
 	// No path to goal.
 	return path;
+}
+
+std::set<position> build_accessible_set(const game_map& map, const std::vector<entity>& entities, const position& start) {
+	std::set<position> openSet;
+	openSet.insert(start);
+
+	std::set<position> reachedSet;
+
+	while(openSet.size() != 0) {
+		position current = *openSet.begin();
+		openSet.erase(std::find(openSet.begin(), openSet.end(), current));
+
+		reachedSet.insert(current);
+
+		direction dir = east;
+		do {
+			position neighbor = current+dir;
+			dir.turn_cw();
+
+			// Is this a wall?
+			if(map.get_tile(neighbor) == '#') {
+				continue;
+			}
+			// Is this an entity?
+			bool collision = false;
+			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+				if(entity_it->get_pos() == neighbor) {
+					collision = true;
+				}
+			}
+			if(collision) {
+				continue;
+			}
+			// We already looked at this node.
+			if(std::find(reachedSet.cbegin(), reachedSet.cend(), neighbor) != reachedSet.cend()) {
+				continue;
+			}
+
+			//Discover a new node.
+			openSet.insert(neighbor);
+		} while (dir != east);
+	}
 }
 
 void print_map(const game_map& map, const std::vector<entity>& entities) {
