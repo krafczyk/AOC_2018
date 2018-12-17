@@ -24,6 +24,7 @@ void print_map_with_markers(const game_map& map, const std::vector<entity>& enti
 
 std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B);
 std::vector<position> find_shortest_path(const game_map& map, const std::vector<entity>& entities, const position& A, const position& B, const std::set<position>& visited, int stack_level);
+std::set<position> build_accessible_set(const game_map& map, const std::vector<entity>& entities, const position& start);
 
 class direction {
 	public:
@@ -287,6 +288,16 @@ class entity {
 				if(candidate_it->second == this->get_pos()) {
 					//std::cout << "Already on a candidate" << std::endl;
 					return;
+				}
+			}
+
+			// Remove non reachable candidates
+			std::set<position> reachablePoints = build_accessible_set(map, entities, this->get_pos());
+			for(auto candidate_it = candidates.begin(); candidate_it != candidates.end(); ) {
+				if(std::find(reachablePoints.cbegin(), reachablePoints.cend(), candidate_it->second) == reachablePoints.cend()) {
+					candidate_it = candidates.erase(candidate_it);
+				} else {
+					++candidate_it;
 				}
 			}
 
@@ -652,10 +663,12 @@ std::set<position> build_accessible_set(const game_map& map, const std::vector<e
 				continue;
 			}
 
-			//Discover a new node.
+			// Discover a new node.
 			openSet.insert(neighbor);
 		} while (dir != east);
 	}
+
+	return reachedSet;
 }
 
 void print_map(const game_map& map, const std::vector<entity>& entities) {
