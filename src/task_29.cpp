@@ -306,6 +306,7 @@ class entity {
 				std::cout << "==================== Starting new pathfinding ====================" << std::endl;
 				std::vector<position> path = A_Star(map, entities, this->get_pos(), candidate_it->second);
 				std::cout << "==================== Ending new pathfinding ====================" << std::endl;
+				throw std::runtime_error("Stop Early!");
 				// Skip unreachable points
 				if(path.size() == 0) {
 					continue;
@@ -527,6 +528,12 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 	std::map<position,std::vector<position>> cameFrom;
 
 	while(openSet.size() != 0) {
+		// Report the open set
+		std::cout << "--Open Set--" << std::endl;
+		print_map_with_markers(map, entities, openSet, 'o');
+
+		std::cout << "--Closed Set--" << std::endl;
+		print_map_with_markers(map, entities, closedSet, 'c');
 		// Pick a current position from the open set. which minimizes fScore.
 		std::set<position> current_possibilities;
 		pos_idx_t min_fscore = std::numeric_limits<pos_idx_t>::max();
@@ -539,12 +546,17 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 				current_possibilities.insert(*it);
 			}
 		}
+
+		std::cout << "current possibilities" << std::endl;
+		print_map_with_markers(map, entities, current_possibilities, 'p');
+
 		// Possibility: rank also by gScore.
 		position current = *current_possibilities.begin();
 
 		if(current == B) {
 			path.push_back(B);
 			while(std::find(cameFrom[path[0]].cbegin(), cameFrom[path[0]].cend(), A) == cameFrom[path[0]].cend()) {
+				std::cout << "looop" << std::endl;
 				path.push_back(cameFrom[path[0]][0]);
 			}
 			return path;
@@ -582,7 +594,7 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 			}
 
 			pos_idx_t this_gscore = gScore[current] + 1;
-			if(std::find(openSet.cbegin(), openSet.cend(), neighbor) != openSet.cend()) {
+			if(std::find(openSet.cbegin(), openSet.cend(), neighbor) == openSet.cend()) {
 				// Discover a new node
 				openSet.insert(neighbor);
 				gScore[neighbor] = this_gscore;
