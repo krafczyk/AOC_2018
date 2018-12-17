@@ -312,7 +312,9 @@ class entity {
 			//temp.push_back(this->get_pos());
 			//print_map_with_markers(map, entities, temp, 'x');
 			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
+				//std::cout << "========== Start pathfinding =============" << std::endl;
 				std::vector<position> path = A_Star(map, entities, this->get_pos(), candidate_it->second);
+				//std::cout << "========== End pathfinding =============" << std::endl;
 				// Skip unreachable points
 				if(path.size() == 0) {
 					continue;
@@ -531,7 +533,9 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 	gScore[A] = A.dist(B); // purely heuristic
 
 	// Tracking the most efficient from directions
-	std::map<position,std::vector<position>> cameFrom;
+	std::map<position,std::set<position>> cameFrom;
+
+	//std::cout << "Going from " << A.get_str() << " to " << B.get_str() << std::endl;
 
 	while(openSet.size() != 0) {
 		// Report the open set
@@ -562,7 +566,12 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 		if(current == B) {
 			path.push_back(B);
 			while(std::find(cameFrom[path[0]].cbegin(), cameFrom[path[0]].cend(), A) == cameFrom[path[0]].cend()) {
-				path.insert(path.begin(), cameFrom[path[0]][0]);
+				//std::cout << "Can reach " << path[0].get_str() << " from:" << std::endl;
+				//for(auto it = cameFrom[path[0]].cbegin(); it != cameFrom[path[0]].cend(); ++it) {
+				//	std::cout << it->get_str() << std::endl;
+
+				//}
+				path.insert(path.begin(), *cameFrom[path[0]].begin());
 			}
 			//std::cout << "Found Path" << std::endl;
 			//print_map_with_markers(map, entities, path, 'P');
@@ -606,19 +615,19 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 				openSet.insert(neighbor);
 				gScore[neighbor] = this_gscore;
 				fScore[neighbor] = this_gscore+neighbor.dist(B);
-				cameFrom[neighbor].push_back(current);
+				cameFrom[neighbor].insert(current);
 			} else {
 				// This is worse than another path we've found.
 				if(this_gscore > gScore[neighbor]) {
 					continue;
 				}
 				if(this_gscore == gScore[neighbor]) {
-					cameFrom[neighbor].push_back(current);
+					cameFrom[neighbor].insert(current);
 				} else {
 					gScore[neighbor] = this_gscore;
 					fScore[neighbor] = this_gscore+neighbor.dist(B);
 					cameFrom[neighbor].clear();
-					cameFrom[neighbor].push_back(current);
+					cameFrom[neighbor].insert(current);
 				}
 			}
 		} while(dir != east);
@@ -787,45 +796,44 @@ int main(int argc, char** argv) {
 	}
 	size_t steps = 0;
 	while((unique_teams.size() > 1)&&((num_moves == 0)||(steps < num_moves))) {
-		// We need to be careful. Some entities may be removed during a turn.
-		std::set<int> need_turn;
+		// We first determine the turn order for the whole step.
+		typedef std::pair<position,int> turn_order;
+		std::set<turn_order> need_turn;
 		// Fill need_turn with all entities
 		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-			need_turn.insert(entity_it->get_id());
+			need_turn.insert(turn_order(entity_it->get_pos(),entity_it->get_id()));
 		}
 		while(need_turn.size() > 0) {
 			// Order entities
-			typedef std::pair<position,size_t> entity_order;
-			std::set<entity_order> total_order;
-			// Insert ordering
-			for(size_t idx = 0; idx < entities.size(); ++idx) {
-				total_order.insert(entity_order(entities[idx].get_pos(), idx));
+			int entity_id = need_turn.begin()->second;
+			// Find the entity;
+			auto entity_it = std::find_if(entities.begin(), entities.end(), [entity_id](const entity& a) { return (a.get_id() == entity_id);});
+			if(entity_it == entities.end()) {
+				// Entity was killed and removed!!
+				need_turn.erase(need_turn.begin());
+				continue;
 			}
-			for(auto order_it  = total_order.begin(); order_it != total_order.end(); ++order_it) {
-				if(hasElement(need_turn, entities[order_it->second].get_id())) {
-					// Take a turn
-					entities[order_it->second].take_turn(map,entities);
-					// Remove from the need turn counter
-					need_turn.erase(std::find(need_turn.begin(), need_turn.end(), entities[order_it->second].get_id()));
-					// Detect whether any entity has died.
-					int dead_unit = -1;
-					for(size_t idx = 0; idx < entities.size(); ++idx) {
-						if(entities[idx].get_hp() <= 0) {
-							dead_unit = entities[idx].get_id();
-							break;
-						}
-					}
-					// Remove a dead unit if necessary.
-					if(dead_unit >= 0) {
-						entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
-						// Remove dead unit from need_turn if it's in there
-						auto dead_need_turn_it = std::find(need_turn.begin(), need_turn.end(), dead_unit);
-						if(dead_need_turn_it != need_turn.end()) {
-							need_turn.erase(dead_need_turn_it);
-						}
-						break;
-					}
+			// Take a turn
+			entity_it->take_turn(map,entities);
+			// Remove from the need turn counter
+			need_turn.erase(need_turn.begin());
+			// Detect whether any entity has died.
+			int dead_unit = -1;
+			for(size_t idx = 0; idx < entities.size(); ++idx) {
+				if(entities[idx].get_hp() <= 0) {
+					dead_unit = entities[idx].get_id();
+					break;
 				}
+			}
+			// Remove a dead unit if necessary.
+			if(dead_unit >= 0) {
+				entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
+				// Remove dead unit from need_turn if it's in there
+				auto dead_need_turn_it = std::find(need_turn.begin(), need_turn.end(), dead_unit);
+				if(dead_need_turn_it != need_turn.end()) {
+					need_turn.erase(dead_need_turn_it);
+				}
+				break;
 			}
 		}
 		// Count remaining unique teams
