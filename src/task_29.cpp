@@ -238,9 +238,9 @@ class entity {
 		int get_ap() const {
 			return this->ap;
 		}
-		void take_turn(const game_map& map, std::vector<entity>&entities) {
+		bool take_turn(const game_map& map, std::vector<entity>&entities) {
 			this->move(map, entities);
-			this->attack(entities);
+			return this->attack(entities);
 		}
 		void move(const game_map& map, std::vector<entity>&entities) {
 			// come up with positions to get to
@@ -275,11 +275,6 @@ class entity {
 				}
 			}
 
-			// Quit early if there are no candidates
-			if(candidates.size() == 0) {
-				return;
-			}
-
 			// Verify that candidates are correct
 			//print_map_with_markers(map, entities, candidates, '?');
 
@@ -293,6 +288,9 @@ class entity {
 
 			// Remove non reachable candidates
 			std::set<position> reachablePoints = build_accessible_set(map, entities, this->get_pos());
+			//std::cout << "Points reachable from " << this->get_pos().get_str() << std::endl;
+			//print_map_with_markers(map, entities, reachablePoints, 'r');
+
 			for(auto candidate_it = candidates.begin(); candidate_it != candidates.end(); ) {
 				if(std::find(reachablePoints.cbegin(), reachablePoints.cend(), candidate_it->second) == reachablePoints.cend()) {
 					candidate_it = candidates.erase(candidate_it);
@@ -301,53 +299,35 @@ class entity {
 				}
 			}
 
-			// --- Calculating paths and costs ---
-			// Calculate cost and movement direction to each candidate
-			// Create temp infrastructure
-			typedef std::pair<position,std::vector<position>> path_def;
-			std::set<path_def> path_candidates;
-			size_t best_length = std::numeric_limits<size_t>::max();
-			//std::cout << "Current Position " << this->get_pos().get_str() << std::endl;
-			//std::vector<position> temp;
-			//temp.push_back(this->get_pos());
-			//print_map_with_markers(map, entities, temp, 'x');
-			for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
-				//std::cout << "========== Start pathfinding =============" << std::endl;
-				std::vector<position> path = A_Star(map, entities, this->get_pos(), candidate_it->second);
-				//std::cout << "========== End pathfinding =============" << std::endl;
-				// Skip unreachable points
-				if(path.size() == 0) {
-					continue;
-				}
-				//std::cout << "Path Candidate: " << path.size() << " to " << candidate_it->get_str() << std::endl;
-				//for(size_t p_it = 0; p_it < path.size(); ++p_it) {
-				//	std::cout << path[p_it].get_str() << std::endl;
-				//}
-				if(path.size() < best_length) {
-					path_candidates.clear();
-					path_candidates.insert(path_def(candidate_it->second, path));
-					best_length = path.size();
-				} else if (path.size() == best_length) {
-					path_candidates.insert(path_def(candidate_it->second, path));
-				}
-			}
-			if(path_candidates.size() == 0) {
-				// No candidate is reachable!
+			// Quit early if there are no candidates
+			if(candidates.size() == 0) {
 				return;
 			}
-			//std::cout << "Best Paths: Num: " << path_candidates.size() << std::endl;
-			//for(auto it = path_candidates.begin(); it != path_candidates.end(); ++it) {
-			//	std::cout << "Candidate: " << it->first.get_str() << std::endl;
-			//	for(size_t p_it = 0; p_it < it->second.size(); ++p_it) {
-			//		std::cout << it->second[p_it].get_str() << std::endl;
-			//	}
-			//	print_map_with_markers(map, entities, it->second, 'P');
-			//}
-			// Pick first path and advance position!
-			this->pos = path_candidates.begin()->second[0];
+
+			// Choose nearest candidate in reading order
+			position chosen_dest = candidates.begin()->second;
+
+			// Compute path
+			//std::cout << "Trying to go from " << this->get_pos().get_str() << " to " << chosen_dest.get_str() << std::endl;
+			std::vector<position> path = A_Star(map, entities, this->get_pos(), chosen_dest);
+			if(path.size() == 0) {
+				throw std::runtime_error("This shouldn't happen");
+			}
+			this->pos = path[0];
 		}
-		void attack(std::vector<entity>& entities [[maybe_unused]]) {
+		bool attack(std::vector<entity>& entities) {
 			typedef std::pair<position, size_t> target_info;
+			// Are there any enemies left?
+			bool attack_over = true;
+			for(size_t idx = 0; idx < entities.size(); ++idx) {
+				if (entities[idx].get_team() != this->get_team()) {
+					attack_over = false;
+					break;
+				}
+			}
+			if(attack_over) {
+				return false;
+			}
 			std::set<target_info> targets;
 			int lowest_health = std::numeric_limits<int>::max();
 			direction dir = east;
@@ -381,6 +361,7 @@ class entity {
 				// Attack first target
 				entities[targets.begin()->second].hp -= this->ap;
 			}
+			return true;
 		}
 
 	private:
@@ -515,6 +496,7 @@ std::vector<position> find_shortest_path(const game_map& map, const std::vector<
 
 // Implementation of A*?
 std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B) {
+	bool super_verbose = false;
 	std::vector<position> path;
 
 	std::set<position> openSet;
@@ -535,15 +517,19 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 	// Tracking the most efficient from directions
 	std::map<position,std::set<position>> cameFrom;
 
-	//std::cout << "Going from " << A.get_str() << " to " << B.get_str() << std::endl;
+	if(super_verbose) {
+	std::cout << "Going from " << A.get_str() << " to " << B.get_str() << std::endl;
+	}
 
 	while(openSet.size() != 0) {
+		if(super_verbose) {
 		// Report the open set
-		//std::cout << "--Open Set--" << std::endl;
-		//print_map_with_markers(map, entities, openSet, 'o');
+		std::cout << "--Open Set--" << std::endl;
+		print_map_with_markers(map, entities, openSet, 'o');
 
-		//std::cout << "--Closed Set--" << std::endl;
-		//print_map_with_markers(map, entities, closedSet, 'c');
+		std::cout << "--Closed Set--" << std::endl;
+		print_map_with_markers(map, entities, closedSet, 'c');
+		}
 		// Pick a current position from the open set. which minimizes fScore.
 		std::set<position> current_possibilities;
 		pos_idx_t min_fscore = std::numeric_limits<pos_idx_t>::max();
@@ -557,8 +543,10 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 			}
 		}
 
-		//std::cout << "current possibilities" << std::endl;
-		//print_map_with_markers(map, entities, current_possibilities, 'p');
+		if(super_verbose) {
+		std::cout << "current possibilities" << std::endl;
+		print_map_with_markers(map, entities, current_possibilities, 'p');
+		}
 
 		// Possibility: rank also by gScore.
 		position current = *current_possibilities.begin();
@@ -566,15 +554,19 @@ std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::ve
 		if(current == B) {
 			path.push_back(B);
 			while(std::find(cameFrom[path[0]].cbegin(), cameFrom[path[0]].cend(), A) == cameFrom[path[0]].cend()) {
-				//std::cout << "Can reach " << path[0].get_str() << " from:" << std::endl;
-				//for(auto it = cameFrom[path[0]].cbegin(); it != cameFrom[path[0]].cend(); ++it) {
-				//	std::cout << it->get_str() << std::endl;
+				if(super_verbose) {
+				std::cout << "Can reach " << path[0].get_str() << " from:" << std::endl;
+				for(auto it = cameFrom[path[0]].cbegin(); it != cameFrom[path[0]].cend(); ++it) {
+					std::cout << it->get_str() << std::endl;
 
-				//}
+				}
+				}
 				path.insert(path.begin(), *cameFrom[path[0]].begin());
 			}
-			//std::cout << "Found Path" << std::endl;
-			//print_map_with_markers(map, entities, path, 'P');
+			if(super_verbose) {
+			std::cout << "Found Path" << std::endl;
+			print_map_with_markers(map, entities, path, 'P');
+			}
 			return path;
 		}
 
@@ -795,7 +787,9 @@ int main(int argc, char** argv) {
 		unique_teams.insert(entity_it->get_team());
 	}
 	size_t steps = 0;
-	while((unique_teams.size() > 1)&&((num_moves == 0)||(steps < num_moves))) {
+	size_t last_full_step = 0;
+	bool combat_finished = false;
+	while((!combat_finished)&&((num_moves == 0)||(steps < num_moves))) {
 		// We first determine the turn order for the whole step.
 		typedef std::pair<position,int> turn_order;
 		std::set<turn_order> need_turn;
@@ -814,7 +808,11 @@ int main(int argc, char** argv) {
 				continue;
 			}
 			// Take a turn
-			entity_it->take_turn(map,entities);
+			if(!entity_it->take_turn(map,entities)) {
+				last_full_step = steps;
+				combat_finished = true;
+				break;
+			}
 			// Remove from the need turn counter
 			need_turn.erase(need_turn.begin());
 			// Detect whether any entity has died.
@@ -829,13 +827,20 @@ int main(int argc, char** argv) {
 			if(dead_unit >= 0) {
 				entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
 				// Remove dead unit from need_turn if it's in there
-				auto dead_need_turn_it = std::find(need_turn.begin(), need_turn.end(), dead_unit);
+				auto dead_need_turn_it [[maybe_unused]] = std::find_if(need_turn.begin(), need_turn.end(), [dead_unit](const turn_order& a) {return (a.second == dead_unit);});
 				if(dead_need_turn_it != need_turn.end()) {
 					need_turn.erase(dead_need_turn_it);
 				}
-				break;
 			}
 		}
+		// Remove dead units
+		//for(auto entity_it = entities.begin(); entity_it != entities.end();) {
+		//	if(entity_it->get_hp() <= 0) {
+		//		entity_it = entities.erase(entity_it);
+		//	} else {
+		//		++entity_it;
+		//	}
+		//}
 		// Count remaining unique teams
 		unique_teams.clear();
 		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
@@ -871,9 +876,9 @@ int main(int argc, char** argv) {
 	name_map['G'] = "Goblins";
 	name_map['E'] = "Elves";
 
-	std::cout << "Combat ends after " << steps-1 << " full rounds" << std::endl;
+	std::cout << "Combat ends after " << last_full_step << " full rounds" << std::endl;
 	std::cout << name_map[entities[0].get_team()] << " win with " << hp_sum << " total hit points" <<  std::endl;
-	std::cout << "The outcome is: " << (steps-1)*hp_sum << std::endl;
+	std::cout << "The outcome is: " << last_full_step*hp_sum << std::endl;
 
 	if(test_val_passed) {
 		if((int) (steps-1)*hp_sum == test_val) {
