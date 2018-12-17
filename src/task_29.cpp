@@ -299,21 +299,48 @@ class entity {
 				}
 			}
 
-			// Quit early if there are no candidates
-			if(candidates.size() == 0) {
-				return;
-			}
-
-			// Choose nearest candidate in reading order
-			position chosen_dest = candidates.begin()->second;
-
-			// Compute path
-			//std::cout << "Trying to go from " << this->get_pos().get_str() << " to " << chosen_dest.get_str() << std::endl;
-			std::vector<position> path = A_Star(map, entities, this->get_pos(), chosen_dest);
-			if(path.size() == 0) {
-				throw std::runtime_error("This shouldn't happen");
-			}
-			this->pos = path[0];
+                        // --- Calculating paths and costs ---
+                        // Calculate cost and movement direction to each candidate
+                        // Create temp infrastructure
+                        typedef std::pair<position,std::vector<position>> path_def;
+                        std::set<path_def> path_candidates;
+                        size_t best_length = std::numeric_limits<size_t>::max();
+                        //std::cout << "Current Position " << this->get_pos().get_str() << std::endl;
+                        //std::vector<position> temp;
+                        //temp.push_back(this->get_pos());
+                        //print_map_with_markers(map, entities, temp, 'x');
+                        for(auto candidate_it=candidates.cbegin(); candidate_it != candidates.cend(); ++candidate_it) {
+                                std::vector<position> path = A_Star(map, entities, this->get_pos(), candidate_it->second);
+                                // Skip unreachable points
+                                if(path.size() == 0) {
+                                        continue;
+                                }
+                                //std::cout << "Path Candidate: " << path.size() << " to " << candidate_it->get_str() << std::endl;
+                                //for(size_t p_it = 0; p_it < path.size(); ++p_it) {
+                                //      std::cout << path[p_it].get_str() << std::endl;
+                                //}
+                                if(path.size() < best_length) {
+                                        path_candidates.clear();
+                                        path_candidates.insert(path_def(candidate_it->second, path));
+                                        best_length = path.size();
+                                } else if (path.size() == best_length) {
+                                        path_candidates.insert(path_def(candidate_it->second, path));
+                                }
+                        }
+                        if(path_candidates.size() == 0) {
+                                // No candidate is reachable!
+                                return;
+                        }
+                        //std::cout << "Best Paths: Num: " << path_candidates.size() << std::endl;
+                        //for(auto it = path_candidates.begin(); it != path_candidates.end(); ++it) {
+                        //      std::cout << "Candidate: " << it->first.get_str() << std::endl;
+                        //      for(size_t p_it = 0; p_it < it->second.size(); ++p_it)
+                        //              std::cout << it->second[p_it].get_str() << std::endl;
+                        //      }
+                        //      print_map_with_markers(map, entities, it->second, 'P');
+                        //}
+                        // Pick first path and advance position!
+                        this->pos = path_candidates.begin()->second[0];
 		}
 		bool attack(std::vector<entity>& entities) {
 			typedef std::pair<position, size_t> target_info;
@@ -734,6 +761,7 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+	bool super_verbose = false;
 	int test_val = 0;
 	bool test_val_passed = false;
 	size_t num_moves = 0;
@@ -744,6 +772,7 @@ int main(int argc, char** argv) {
 	Parser.AddArgument("-t/--test-val", "Expected value", &test_val, ArgParse::Argument::Optional, &test_val_passed);
 	Parser.AddArgument("-p/--progress", "Show progress of battle", &progress);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
+	Parser.AddArgument("-sv/--super-verbose", "Print Super Verbose output", &super_verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
 		std::cerr << "Problem parsing arguments!" << std::endl;
@@ -861,8 +890,12 @@ int main(int argc, char** argv) {
 			std::cout << std::endl;
 		}
 		++steps;
+		if(super_verbose) {
+			std::cout << "----- After Step " << steps << " -----" << std::endl;
+			print_map(map, entities);
+		}
 	}
-	if(verbose) {
+	if(verbose|super_verbose) {
 		std::cout << "----- After Step " << steps << " -----" << std::endl;
 		print_map(map, entities);
 	}
