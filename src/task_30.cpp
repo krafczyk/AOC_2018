@@ -179,7 +179,14 @@ class entity {
 			return this->hp;
 		}
 		int get_ap() const {
-			return this->ap;
+			if(this->get_team() == 'E') {
+				return entity::elf_ap;
+			} else if(this->get_team() == 'G') {
+				return entity::goblin_ap;
+			} else {
+				throw std::runtime_error("Unknown team!!");
+				return 3;
+			}
 		}
 		bool take_turn(const game_map& map, std::vector<entity>&entities) {
 			this->move(map, entities);
@@ -318,6 +325,9 @@ class entity {
 			return true;
 		}
 
+	public:
+		static int elf_ap;
+		static int goblin_ap;
 	private:
 		position pos;
 		char team;
@@ -325,6 +335,9 @@ class entity {
 		int ap;
 		int id;
 };
+
+int entity::elf_ap = 3;
+int entity::goblin_ap = 3;
 
 pos_idx_t find_closest_points(const game_map& map, const std::set<position>& forbidden, const position& A, const std::set<position>& destinations, std::set<position>& closest_set) {
 	typedef std::pair<position,pos_idx_t> node_summary;
