@@ -160,6 +160,16 @@ Registers create_registers(std::string in) {
 	return answer;
 }
 
+void get_instruction(std::string in, Inst_t instruction[4]) {
+	std::stringstream ss(in);
+	std::string temp;
+	size_t idx = 0;
+	while(std::getline(ss, temp, ' ')) {
+		instruction[idx] = std::atoi(temp.c_str());
+		idx += 1;
+	}
+}
+
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
@@ -190,13 +200,7 @@ int main(int argc, char** argv) {
 			Begin = create_registers(line.substr(8));
 			state = 1;
 		} else if (state == 1) {
-			std::stringstream ss(line);
-			std::string temp;
-			size_t idx = 0;
-			while(std::getline(ss, temp, ' ')) {
-				instruction[idx] = std::atoi(temp.c_str());
-				idx += 1;
-			}
+			get_instruction(line, instruction);
 			state = 2;
 		} else if (state == 2) {
 			After = create_registers(line.substr(8));
