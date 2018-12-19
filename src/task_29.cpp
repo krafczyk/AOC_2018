@@ -27,8 +27,6 @@ void print_map_with_markers(const game_map& map, const std::vector<entity>& enti
 template<typename C>
 void print_map_with_markers(const game_map& map, const std::set<position>& forbidden, const C& positions, char tile);
 
-std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B);
-std::vector<position> find_shortest_path(const game_map& map, const std::vector<entity>& entities, const position& A, const position& B, const std::set<position>& visited, int stack_level);
 std::set<position> build_accessible_set(const game_map& map, const std::set<position>& forbidden, const position& start);
 pos_idx_t find_closest_points(const game_map& map, const std::set<position>& forbidden, const position& A, const std::set<position>& destinations, std::set<position>& closest_set);
 
@@ -188,7 +186,6 @@ class entity {
 			return this->attack(entities);
 		}
 		void move(const game_map& map, std::vector<entity>&entities) {
-			//std::cout << "Starting move for " << this->pos.get_str() << std::endl;
 			// Build fobidden set
 			std::set<position> forbidden;
 			for(auto it = entities.cbegin(); it != entities.cend(); ++it) {
@@ -217,23 +214,15 @@ class entity {
 				}
 			}
 
-			// Verify that candidates are correct
-			//print_map_with_markers(map, entities, candidates, '?');
-
 			// --- Check that we aren't already on a candidate
 			for(auto it=candidates.cbegin(); it != candidates.cend(); ++it) {
 				if(*it == this->get_pos()) {
-					//std::cout << "Already on a candidate" << std::endl;
 					return;
 				}
 			}
 
 			// Remove non reachable candidates
-			//std::cout << "Finding reachable points" << std::endl;
 			std::set<position> reachablePoints = build_accessible_set(map, forbidden, this->get_pos());
-			//std::cout << "End of finding reachable points" << std::endl;
-			//std::cout << "Points reachable from " << this->get_pos().get_str() << std::endl;
-			//print_map_with_markers(map, entities, reachablePoints, 'r');
 
 			for(auto it = candidates.begin(); it != candidates.end(); ) {
 				if(std::find(reachablePoints.cbegin(), reachablePoints.cend(), *it) == reachablePoints.cend()) {
@@ -248,26 +237,18 @@ class entity {
 				return;
 			}
 
-			//std::cout << "Candidates testing:" << std::endl;
-			//std::for_each(candidates.cbegin(), candidates.cend(), [](const position& in) {std::cout << in.get_str() << std::endl;});
-
 			std::set<position> closest_set;
-			//std::cout << "==== start find_closest_points ===" << std::endl;
 			pos_idx_t dist = find_closest_points(map, forbidden, this->get_pos(), candidates, closest_set);
-			//std::cout << "==== end   find_closest_points: " << dist << " ===" << std::endl;
-			//std::cout << "Detected closest positions" << std::endl;
-			//std::for_each(closest_set.cbegin(), closest_set.cend(), [](const position& in) {std::cout << in.get_str() << std::endl;});
+
 			if(closest_set.size() == 0) {
 				throw std::runtime_error("This shouldn't happen!");
 			}
 
 			// Choose earliest by reading order.
 			position choice = *closest_set.begin();
-			//std::cout << "The closest position is: " << choice.get_str() << " dist is: " << dist << std::endl;
 
 			std::set<position> neighbors = this->pos.neighbors();
 			for(auto it = neighbors.begin(); it != neighbors.end(); ++it) {
-				//std::cout << "Considering neighbor: " << it->get_str() << std::endl;
 				if(map.get_tile(*it) == '#') {
 					continue;
 				}
@@ -282,20 +263,15 @@ class entity {
 				}
 				std::set<position> choice_set;
 				choice_set.insert(choice);
-				//std::cout << "==== start second find_closest_points ===" << std::endl;
 				pos_idx_t dist_2 = find_closest_points(map, forbidden, *it, choice_set, closest_set);
-				//std::cout << "==== end second find_closest_points ===" << std::endl;
 				if(closest_set.size() > 0) {
-					//std::cout << "Distance from neighbor: " << dist_2 << std::endl;
 					if(dist_2 == dist-1) {
-						//std::cout << "Setting position!!" << std::endl;
 						// Set position here!
 						this->pos = *it;
 						break;
 					}
 				}
 			}
-			//throw std::runtime_error("Stop early");
 		}
 		bool attack(std::vector<entity>& entities) {
 			typedef std::pair<position, size_t> target_info;
@@ -350,254 +326,6 @@ class entity {
 		int id;
 };
 
-std::vector<position> find_shortest_path(const game_map& map, const std::vector<entity>& entities, const position& A, const position& B, const std::set<position>& visited, int stack_level) {
-	std::vector<position> path;
-	// build neighbor candidates
-	std::set<position> neighbors;
-
-	//std::cout << "find_shortest_path: Start: " << A.get_str() << " Level: " << stack_level << std::endl;
-	//if(stack_level > 2) {
-	//	throw std::runtime_error("Stop early stack too deep!");
-	//}
-	//std::cout << "Start Loop A" << std::endl;
-	std::set<position> all_neighbors = A.neighbors();
-	for(auto n_it = all_neighbors.cbegin(); n_it != all_neighbors.cend(); ++n_it) {
-		//std::cout << "Loop A" << std::endl;
-
-		// Determine if it's a wall
-		if(map.get_tile(*n_it) == '#') {
-			continue;
-		}
-		// Determine if it's been visited
-		if(hasElement(visited, *n_it)) {
-			continue;
-		}
-		// Determine if it has an entity on it
-		bool collision = false;
-		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-			if(entity_it->get_pos() == *n_it) {
-				collision = true;
-				break;
-			}
-		}
-		if(collision) {
-			continue;
-		}
-
-		// These neighbors are good candidates
-		neighbors.insert(*n_it);
-		//std::cout << "Neighbor candidate: " << neighbor.get_str() << std::endl;
-
-	}
-	//std::cout << "End Loop A" << std::endl;
-
-	if(neighbors.size() == 0) {
-		// No path forward..
-		return path;
-	}
-
-	// We now need to choose one of the neighbors.
-	typedef std::pair<position,std::vector<position>> path_summary;
-	std::set<path_summary> best_paths;
-	pos_idx_t best_cost = std::numeric_limits<pos_idx_t>::max();
-
-	//std::cout << "Start Loop B" << std::endl;
-	while(neighbors.size() != 0) {
-		//std::cout << "Loop B" << std::endl;
-		// Find neighbor which has best estimated score.
-		// Score must be better at least as good as previously recorded concrete paths.
-
-		// Create neighbor sublist with least distance estimate
-		std::set<position> closest_neighbors;
-		pos_idx_t lowest_estimate = std::numeric_limits<pos_idx_t>::max();
-		for(auto n_it = neighbors.cbegin(); n_it != neighbors.cend(); ++n_it) {
-			pos_idx_t n_dist = n_it->dist(B);
-			if(n_dist < lowest_estimate) {
-				closest_neighbors.clear();
-				closest_neighbors.insert(*n_it);
-				lowest_estimate = n_dist;
-			} else if (n_dist == lowest_estimate) {
-				closest_neighbors.insert(*n_it);
-			}
-		}
-
-		if (lowest_estimate == 0) {
-			// We've found the goal! Quit here!
-			path.push_back(*closest_neighbors.begin());
-			return path;
-		}
-
-		// Quit early if we've already found a better path than these are estimated to be
-		if (lowest_estimate > best_cost) {
-			break;
-		}
-
-		// Pick the closest neighbor who comes first
-		position picked_neighbor = *closest_neighbors.begin();
-
-		// Remove from considered neighbors.
-		neighbors.erase(std::find(neighbors.begin(), neighbors.end(), picked_neighbor));
-
-		std::set<position> new_visited = visited;
-		new_visited.insert(A);
-		std::vector<position> n_path = find_shortest_path(map, entities, picked_neighbor, B, new_visited, stack_level+1);
-		if(n_path.size() == 0) {
-			// We don't add empty paths.. i.e. this path couldn't reach the destination.
-			continue;
-		} else {
-			if (n_path.size() < best_cost) {
-				best_paths.clear();
-				best_paths.insert(path_summary(picked_neighbor, n_path));
-				best_cost = n_path.size();
-			} else if (n_path.size() == best_cost) {
-				best_paths.insert(path_summary(picked_neighbor, n_path));
-			}
-		}
-	}
-	//std::cout << "End Loop B" << std::endl;
-	// We should have a set of best paths
-	if(best_paths.size() == 0) {
-		// No paths to solution..
-		return path;
-	} else {
-		// With tied paths, always choose the 'first' one.
-		auto best_path = best_paths.begin();
-		path.push_back(best_path->first);
-		path.insert(path.end(), best_path->second.begin(), best_path->second.end());
-		return path;
-	}
-}
-
-// Implementation of A*?
-std::vector<position> A_Star(const game_map& map [[maybe_unused]], const std::vector<entity>& entities [[maybe_unused]], const position& A, const position& B) {
-	bool super_verbose = false;
-	std::vector<position> path;
-
-	std::set<position> openSet;
-	openSet.insert(A);
-
-	std::set<position> closedSet;
-
-	// The cost of getting from the start to the given node.
-	// This is a running tally
-	std::map<position,pos_idx_t> gScore;
-	gScore[A] = 0; // 0 cost to get from the start to the start
-
-	// The cost of going from the given node to the goal.
-	// Partly known, partly heuristic.
-	std::map<position,pos_idx_t> fScore;
-	gScore[A] = A.dist(B); // purely heuristic
-
-	// Tracking the most efficient from directions
-	std::map<position,std::set<position>> cameFrom;
-
-	if(super_verbose) {
-	std::cout << "Going from " << A.get_str() << " to " << B.get_str() << std::endl;
-	}
-
-	while(openSet.size() != 0) {
-		if(super_verbose) {
-		// Report the open set
-		std::cout << "--Open Set--" << std::endl;
-		print_map_with_markers(map, entities, openSet, 'o');
-
-		std::cout << "--Closed Set--" << std::endl;
-		print_map_with_markers(map, entities, closedSet, 'c');
-		}
-		// Pick a current position from the open set. which minimizes fScore.
-		std::set<position> current_possibilities;
-		pos_idx_t min_fscore = std::numeric_limits<pos_idx_t>::max();
-		for(auto it = openSet.cbegin(); it != openSet.cend(); ++it) {
-			if(fScore[*it] < min_fscore) {
-				current_possibilities.clear();
-				current_possibilities.insert(*it);
-				min_fscore = fScore[*it];
-			} else if(fScore[*it] == min_fscore) {
-				current_possibilities.insert(*it);
-			}
-		}
-
-		if(super_verbose) {
-		std::cout << "current possibilities" << std::endl;
-		print_map_with_markers(map, entities, current_possibilities, 'p');
-		}
-
-		// Possibility: rank also by gScore.
-		position current = *current_possibilities.begin();
-
-		if(current == B) {
-			path.push_back(B);
-			while(std::find(cameFrom[path[0]].cbegin(), cameFrom[path[0]].cend(), A) == cameFrom[path[0]].cend()) {
-				if(super_verbose) {
-				std::cout << "Can reach " << path[0].get_str() << " from:" << std::endl;
-				for(auto it = cameFrom[path[0]].cbegin(); it != cameFrom[path[0]].cend(); ++it) {
-					std::cout << it->get_str() << std::endl;
-
-				}
-				}
-				path.insert(path.begin(), *cameFrom[path[0]].begin());
-			}
-			if(super_verbose) {
-			std::cout << "Found Path" << std::endl;
-			print_map_with_markers(map, entities, path, 'P');
-			}
-			return path;
-		}
-
-		// Put it in the closed set
-		closedSet.insert(current);
-		// Remove it from the open set
-		openSet.erase(std::find(openSet.begin(), openSet.end(), current));
-
-		// Go through neighbors of current and add them to the open set if they aren't in either set already.
-		std::set<position> neighbors = current.neighbors();
-		for(auto n_it = neighbors.cbegin(); n_it != neighbors.cend(); ++n_it) {
-			// Check whether neighbor is in the closedSet
-			if(std::find(closedSet.cbegin(), closedSet.cend(), *n_it) != closedSet.cend()) {
-				continue;
-			}
-			// Check whether neighbor is a wall or entity
-			if(map.get_tile(*n_it) == '#') {
-				continue;
-			}
-			bool collision = false;
-			for(auto it = entities.cbegin(); it != entities.cend(); ++it) {
-				if(it->get_pos() == *n_it) {
-					collision = true;
-					break;
-				}
-			}
-			if(collision) {
-				continue;
-			}
-
-			pos_idx_t this_gscore = gScore[current] + 1;
-			if(std::find(openSet.cbegin(), openSet.cend(), *n_it) == openSet.cend()) {
-				// Discover a new node
-				openSet.insert(*n_it);
-				gScore[*n_it] = this_gscore;
-				fScore[*n_it] = this_gscore+n_it->dist(B);
-				cameFrom[*n_it].insert(current);
-			} else {
-				// This is worse than another path we've found.
-				if(this_gscore > gScore[*n_it]) {
-					continue;
-				}
-				if(this_gscore == gScore[*n_it]) {
-					cameFrom[*n_it].insert(current);
-				} else {
-					gScore[*n_it] = this_gscore;
-					fScore[*n_it] = this_gscore+n_it->dist(B);
-					cameFrom[*n_it].clear();
-					cameFrom[*n_it].insert(current);
-				}
-			}
-		}
-	}
-	// No path to goal.
-	return path;
-}
-
 pos_idx_t find_closest_points(const game_map& map, const std::set<position>& forbidden, const position& A, const std::set<position>& destinations, std::set<position>& closest_set) {
 	typedef std::pair<position,pos_idx_t> node_summary;
 	std::vector<node_summary> openSet;
@@ -605,79 +333,37 @@ pos_idx_t find_closest_points(const game_map& map, const std::set<position>& for
 	std::set<position> seen;
 	closest_set.clear();
 
-	//std::cout << "find_closest_points from: " << A.get_str() << std::endl;
-	//std::cout << "To: " << std::endl;
-	//std::for_each(destinations.cbegin(), destinations.cend(), [](const position& in){std::cout << in.get_str() << std::endl;});
-
 	pos_idx_t dist = 0;
 	bool found_dist = false;
 	while(openSet.size() != 0) {
-		//std::cout << "current open set:" << std::endl;
-		//std::set<position> temp;
-		//std::for_each(openSet.cbegin(), openSet.cend(), [&temp](const node_summary& in) {temp.insert(in.first);});
-		//print_map_with_markers(map, forbidden, temp, 'o');
-		//std::cout << "current seen set:" << std::endl;
-		//temp.clear();
-		//std::for_each(seen.cbegin(), seen.cend(), [&temp](const position& in) {temp.insert(in);});
-		//print_map_with_markers(map, forbidden, temp, 's');
-
 		node_summary considered = *openSet.begin();
 		openSet.erase(openSet.begin());
-		//std::cout << "Considering node " << considered.first.get_str() << std::endl;
 		if (found_dist && (considered.second > dist)) {
-			//std::cout << "Bailing here" << std::endl;
 			return dist;
 		}
 
-		// Ignore seen, walls, and entities
-		//if(hasElement(seen, considered.first)) {
-		//	continue;
-		//}
-		//if(map.get_tile(considered.first) == '#') {
-		//	continue;
-		//}
-		//bool collision = false;
-		//for(auto it = entities.cbegin(); it != entities.cend(); ++it) {
-		//	if(it->get_pos() == considered.first) {
-		//		collision = true;
-		//		break;
-		//	}
-		//}
-		//if(collision) {
-		//	continue;
-		//}
-
-		//std::cout << "Adding position as seen" << std::endl;
 		if(hasElement(seen, considered.first)) {
 			throw std::runtime_error("This shouldn't happen");
 		}
 		seen.insert(considered.first);
 		if(hasElement(destinations, considered.first)) {
-			//std::cout << "Found the destination!" << std::endl;
 			found_dist = true;
 			dist = considered.second;
 			closest_set.insert(considered.first);
 		}
 		std::set<position> neighbors = considered.first.neighbors();
 		for(auto n_it = neighbors.cbegin(); n_it != neighbors.cend(); ++n_it) {
-			//std::cout << "Adding neighbors" << std::endl;
 			// Don't add seen elements
 			if(hasElement(seen, *n_it)) {
 				continue;
 			}
-			// Don't add elements already in the open Set.
 			position neighbor = *n_it;
 			if(std::find_if(openSet.cbegin(), openSet.cend(), [&neighbor](const node_summary& in) {return (neighbor == in.first); }) != openSet.cend()) {
 				continue;
 			}
-			//if(hasElement(openSet, *n_it)) {
-			//	continue;
-			//}
-			//std::cout << "neighbor hasn't been seen" << std::endl;
 			if(map.get_tile(*n_it) == '#') {
 				continue;
 			}
-			//std::cout << "Neighbor wasn't a wall" << std::endl;
 			bool collision = false;
 			for(auto it = forbidden.cbegin(); it != forbidden.cend(); ++it) {
 				if(*it == *n_it) {
@@ -688,13 +374,10 @@ pos_idx_t find_closest_points(const game_map& map, const std::set<position>& for
 			if(collision) {
 				continue;
 			}
-			//std::cout << "Neighbor added to the open set." << std::endl;
 			openSet.push_back(node_summary(*n_it,considered.second+1));
 		}
-		//std::cout << "open set now has size: " << openSet.size() << std::endl;
 	}
 	if(found_dist) {
-		//std::cout << "Special exit if we found it after all" << std::endl;
 		return dist;
 	}
 	throw std::runtime_error("We should never be here");
@@ -927,14 +610,6 @@ int main(int argc, char** argv) {
 				}
 			}
 		}
-		// Remove dead units
-		//for(auto entity_it = entities.begin(); entity_it != entities.end();) {
-		//	if(entity_it->get_hp() <= 0) {
-		//		entity_it = entities.erase(entity_it);
-		//	} else {
-		//		++entity_it;
-		//	}
-		//}
 		// Count remaining unique teams
 		unique_teams.clear();
 		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
