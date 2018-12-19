@@ -503,7 +503,78 @@ void print_map_with_markers(const game_map& map, const std::set<position>& forbi
 	print_map_with_markers_helper(map, forbidden, positions.cbegin(), positions.cend(), tile);
 }
 
-
+bool run_sim(const game_map& map, std::vector<entity>& entities, size_t& last_full_step, bool verbose, bool super_verbose) {
+	std::set<char> unique_teams;
+	for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+		unique_teams.insert(entity_it->get_team());
+	}
+	size_t steps = 0;
+	bool combat_finished = false;
+	bool elf_died = false;
+	while(!combat_finished) {
+		// We first determine the turn order for the whole step.
+		typedef std::pair<position,int> turn_order;
+		std::set<turn_order> need_turn;
+		// Fill need_turn with all entities
+		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+			need_turn.insert(turn_order(entity_it->get_pos(),entity_it->get_id()));
+		}
+		while(need_turn.size() > 0) {
+			// Order entities
+			int entity_id = need_turn.begin()->second;
+			// Find the entity;
+			auto entity_it = std::find_if(entities.begin(), entities.end(), [entity_id](const entity& a) { return (a.get_id() == entity_id);});
+			if(entity_it == entities.end()) {
+				// Entity was killed and removed!!
+				need_turn.erase(need_turn.begin());
+				continue;
+			}
+			// Take a turn
+			if(!entity_it->take_turn(map,entities)) {
+				last_full_step = steps;
+				combat_finished = true;
+				break;
+			}
+			// Remove from the need turn counter
+			need_turn.erase(need_turn.begin());
+			// Detect whether any entity has died.
+			int dead_unit = -1;
+			for(size_t idx = 0; idx < entities.size(); ++idx) {
+				if(entities[idx].get_hp() <= 0) {
+					if(entities[idx].get_team() == 'E') {
+						elf_died = true;
+					}
+					dead_unit = entities[idx].get_id();
+					break;
+				}
+			}
+			// Remove a dead unit if necessary.
+			if(dead_unit >= 0) {
+				entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
+				// Remove dead unit from need_turn if it's in there
+				auto dead_need_turn_it [[maybe_unused]] = std::find_if(need_turn.begin(), need_turn.end(), [dead_unit](const turn_order& a) {return (a.second == dead_unit);});
+				if(dead_need_turn_it != need_turn.end()) {
+					need_turn.erase(dead_need_turn_it);
+				}
+			}
+		}
+		// Count remaining unique teams
+		unique_teams.clear();
+		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
+			unique_teams.insert(entity_it->get_team());
+		}
+		++steps;
+		if(super_verbose) {
+			std::cout << "----- After Step " << steps << " -----" << std::endl;
+			print_map(map, entities);
+		}
+	}
+	if(verbose|super_verbose) {
+		std::cout << "----- After Step " << steps << " -----" << std::endl;
+		print_map(map, entities);
+	}
+	return elf_died;
+}
 
 int main(int argc, char** argv) {
 	// Parse Arguments
@@ -542,12 +613,12 @@ int main(int argc, char** argv) {
 	}
 
 	game_map map(input_data.size(), input_data[0].size());
-	std::vector<entity> entities;
+	std::vector<entity> initial_entities;
 	for(pos_idx_t line_idx = 0; line_idx < map.get_num_lines(); ++line_idx) {
 		for(pos_idx_t x_idx = 0; x_idx < map.get_line_len(); ++x_idx) {
 			char tile_char = input_data[line_idx][x_idx];
 			if((tile_char == 'G')||tile_char == 'E') {
-				entities.push_back(entity(line_idx, x_idx, tile_char, entities.size()));
+				initial_entities.push_back(entity(line_idx, x_idx, tile_char, initial_entities.size()));
 				tile_char = '.';
 			}
 			map.assign(line_idx, x_idx) = tile_char;
@@ -556,89 +627,12 @@ int main(int argc, char** argv) {
 
 	if (verbose) {
 		std::cout << "Initial state" << std::endl;
-		print_map(map, entities);
+		print_map(map, initial_entities);
 	}
 
-	std::set<char> unique_teams;
-	for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-		unique_teams.insert(entity_it->get_team());
-	}
-	size_t steps = 0;
+	std::vector<entity> entities = initial_entities;
 	size_t last_full_step = 0;
-	bool combat_finished = false;
-	while((!combat_finished)&&((num_moves == 0)||(steps < num_moves))) {
-		// We first determine the turn order for the whole step.
-		typedef std::pair<position,int> turn_order;
-		std::set<turn_order> need_turn;
-		// Fill need_turn with all entities
-		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-			need_turn.insert(turn_order(entity_it->get_pos(),entity_it->get_id()));
-		}
-		while(need_turn.size() > 0) {
-			// Order entities
-			int entity_id = need_turn.begin()->second;
-			// Find the entity;
-			auto entity_it = std::find_if(entities.begin(), entities.end(), [entity_id](const entity& a) { return (a.get_id() == entity_id);});
-			if(entity_it == entities.end()) {
-				// Entity was killed and removed!!
-				need_turn.erase(need_turn.begin());
-				continue;
-			}
-			// Take a turn
-			if(!entity_it->take_turn(map,entities)) {
-				last_full_step = steps;
-				combat_finished = true;
-				break;
-			}
-			// Remove from the need turn counter
-			need_turn.erase(need_turn.begin());
-			// Detect whether any entity has died.
-			int dead_unit = -1;
-			for(size_t idx = 0; idx < entities.size(); ++idx) {
-				if(entities[idx].get_hp() <= 0) {
-					dead_unit = entities[idx].get_id();
-					break;
-				}
-			}
-			// Remove a dead unit if necessary.
-			if(dead_unit >= 0) {
-				entities.erase(std::find_if(entities.begin(), entities.end(), [dead_unit](const entity& a) { return (a.get_id() == dead_unit); }));
-				// Remove dead unit from need_turn if it's in there
-				auto dead_need_turn_it [[maybe_unused]] = std::find_if(need_turn.begin(), need_turn.end(), [dead_unit](const turn_order& a) {return (a.second == dead_unit);});
-				if(dead_need_turn_it != need_turn.end()) {
-					need_turn.erase(dead_need_turn_it);
-				}
-			}
-		}
-		// Count remaining unique teams
-		unique_teams.clear();
-		for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-			unique_teams.insert(entity_it->get_team());
-		}
-		// Show progress
-		if(progress&&(steps%20 == 0)) {
-			std::map<char,int> summary;
-			std::map<char,int> num;
-			for(auto entity_it = entities.cbegin(); entity_it != entities.cend(); ++entity_it) {
-				summary[entity_it->get_team()] += entity_it->get_hp();
-				num[entity_it->get_team()] += 1;
-			}
-			std::cout << "After " << steps << " Steps:";
-			for(auto summary_it = summary.cbegin(); summary_it != summary.cend(); ++summary_it) {
-				std::cout << " " << summary_it->first << ": " << num[summary_it->first] << " " << summary_it->second;
-			}
-			std::cout << std::endl;
-		}
-		++steps;
-		if(super_verbose) {
-			std::cout << "----- After Step " << steps << " -----" << std::endl;
-			print_map(map, entities);
-		}
-	}
-	if(verbose|super_verbose) {
-		std::cout << "----- After Step " << steps << " -----" << std::endl;
-		print_map(map, entities);
-	}
+	run_sim(map, entities, last_full_step, verbose, super_verbose);
 
 	int hp_sum = 0;
 	for(size_t idx = 0; idx < entities.size(); ++idx) {
@@ -654,7 +648,7 @@ int main(int argc, char** argv) {
 	std::cout << "The outcome is: " << last_full_step*hp_sum << std::endl;
 
 	if(test_val_passed) {
-		if((int) (steps-1)*hp_sum == test_val) {
+		if((int) last_full_step*hp_sum == test_val) {
 			std::cout << "Test Passed!" << std::endl;
 		} else {
 			std::cout << "Test Failed!" << std::endl;
