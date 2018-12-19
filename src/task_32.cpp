@@ -176,10 +176,7 @@ int main(int argc, char** argv) {
 	std::string input_filepath;
 	bool verbose = false;
 	ArgParse::ArgParser Parser("Task 32");
-	size_t test_val = 0;
-	bool test_val_given = false;
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
-	Parser.AddArgument("-t/--test-val", "Give a test value", &test_val, ArgParse::Argument::Optional, &test_val_given);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -199,10 +196,13 @@ int main(int argc, char** argv) {
 	Registers After;
 	Inst_t instruction[4];
 	size_t state = 0; // State 0 is looking for Begin.
-	size_t number_with_matches = 0;
+	std::map<std::string,std::map<Inst_t,size_t>> instruction_statistics;
+	size_t num_lines_read = 0;
 	while(std::getline(infile, line)) {
+		num_lines_read += 1;
 		if(state == 0) {
 			if(line == "") {
+				std::cout << "End of first part. " << num_lines_read << " lines read." << std::endl;
 				// Reached end of first part.
 				break;
 			}
@@ -212,31 +212,18 @@ int main(int argc, char** argv) {
 			get_instruction(line, instruction);
 			state = 2;
 		} else if (state == 2) {
+			std::cout << "Handling sample" << std::endl;
 			After = create_registers(line.substr(8));
 			state = 3;
-			size_t num_matching = 0;
-			std::vector<std::string> inst_names;
 			ConstForEach(instructions, [&](const std::pair<std::string,decltype(addr)*>& item) {
 				Registers temp = Begin;
 				(*(item.second))(instruction[1], instruction[2], instruction[3], temp);
 				if(After == temp) {
-					num_matching += 1;
-					inst_names.push_back(item.first);
+					instruction_statistics[item.first][instruction[0]] += 1;
+					std::cout << "inst " << item.first << " opcode " << instruction[0] << " is updated to: " << instruction_statistics[item.first][instruction[0]] << std::endl;
 				}
 			});
-			if(num_matching >= 3) {
-				number_with_matches += 1;
-			}
-			if(verbose) {
-				std::cout << "The test matched " << num_matching << " instructions" << std::endl;
-				std::cout << "They are: (";
-				ConstForEach(inst_names, [](const std::string& name) {
-					std::cout << " " << name;
-				});
-				std::cout << ")" << std::endl;
-			}
 		} else if (state == 3) {
-			std::cout << "Skip state: (" << line << ")" << std::endl;
 			state = 0;
 			// Skip
 		} else {
@@ -244,15 +231,38 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	std::cout << number_with_matches << " examples matched 3 or more instructions" << std::endl;
+	// Match each instruction to its opcode
+	std::map<Inst_t, std::string> opcode_map;
+	ConstForEach(instruction_statistics, [&](const std::pair<std::string,std::map<Inst_t,size_t>> in) {
+		Inst_t max_opcode = 0;
+		size_t max_num = 0;
+		ConstForEach(in.second, [&](const std::pair<Inst_t,size_t>& sub_in) {
+			if(sub_in.second > max_num) {
+				max_opcode = sub_in.first;
+				max_num = sub_in.second;
+			}
+		});
+		opcode_map[max_opcode] = in.first;
+	});
 
-	if(test_val_given) {
-		if(number_with_matches == test_val) {
-			std::cout << "Test Passed!" << std::endl;
+	//Test that no opcode collides with any other, and opcode range
+	//Show mapping as well.
+	std::cout << "The opcode mapping is:" << std::endl;
+	std::set<std::string> inst_names;
+	ConstForEach(opcode_map, [&](const std::pair<Inst_t, std::string>& in) {
+		std::cout << in.first << " -> " << in.second << std::endl;
+		if(hasElement(inst_names, in.second)) {
+			throw std::runtime_error("There was an opcode degeneracy!");
 		} else {
-			std::cout << "Test Failed!" << std::endl;
+			inst_names.insert(in.second);
 		}
-	}
+		if(in.first < 0) {
+			throw std::runtime_error("Invalid Opcode! Negative!");
+		}
+		if(in.first >= 16) {
+			throw std::runtime_error("Invalid Opcode! Too large!");
+		}
+	});
 
 	return 0;
 }
