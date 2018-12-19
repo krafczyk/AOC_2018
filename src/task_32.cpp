@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 #include <set>
 #include <map>
 #include <sstream>
@@ -196,13 +197,30 @@ int main(int argc, char** argv) {
 	Registers After;
 	Inst_t instruction[4];
 	size_t state = 0; // State 0 is looking for Begin.
-	std::map<std::string,std::map<Inst_t,size_t>> instruction_statistics;
+	// Initialize static map.
+	std::map<std::string,std::vector<size_t>> instruction_statistics {
+		{"addr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"addi", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"mulr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"muli", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"banr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"bani", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"borr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"bori", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"setr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"seti", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"gtir", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"gtri", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"gtrr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"eqir", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"eqri", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"eqrr", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	};
 	size_t num_lines_read = 0;
 	while(std::getline(infile, line)) {
 		num_lines_read += 1;
 		if(state == 0) {
 			if(line == "") {
-				std::cout << "End of first part. " << num_lines_read << " lines read." << std::endl;
 				// Reached end of first part.
 				break;
 			}
@@ -212,7 +230,6 @@ int main(int argc, char** argv) {
 			get_instruction(line, instruction);
 			state = 2;
 		} else if (state == 2) {
-			std::cout << "Handling sample" << std::endl;
 			After = create_registers(line.substr(8));
 			state = 3;
 			ConstForEach(instructions, [&](const std::pair<std::string,decltype(addr)*>& item) {
@@ -220,7 +237,6 @@ int main(int argc, char** argv) {
 				(*(item.second))(instruction[1], instruction[2], instruction[3], temp);
 				if(After == temp) {
 					instruction_statistics[item.first][instruction[0]] += 1;
-					std::cout << "inst " << item.first << " opcode " << instruction[0] << " is updated to: " << instruction_statistics[item.first][instruction[0]] << std::endl;
 				}
 			});
 		} else if (state == 3) {
@@ -231,19 +247,46 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	// Match each instruction to its opcode
-	std::map<Inst_t, std::string> opcode_map;
-	ConstForEach(instruction_statistics, [&](const std::pair<std::string,std::map<Inst_t,size_t>> in) {
-		Inst_t max_opcode = 0;
-		size_t max_num = 0;
-		ConstForEach(in.second, [&](const std::pair<Inst_t,size_t>& sub_in) {
-			if(sub_in.second > max_num) {
-				max_opcode = sub_in.first;
-				max_num = sub_in.second;
-			}
+	if(verbose) {
+	std::cout << "Statistics collected: " << std::endl;
+	ConstForEach(instruction_statistics, [&](const std::pair<std::string,std::vector<size_t>>& in) {
+		std::cout << in.first << ": ";
+		ConstForEach(in.second, [&](const size_t& a) {
+				std::cout << std::setfill(' ') << std::setw(3) << a;
 		});
-		opcode_map[max_opcode] = in.first;
+		std::cout << std::endl;
 	});
+	}
+
+	std::set<Inst_t> opcode_assigned;
+	std::set<std::string> inst_assigned;
+	std::map<Inst_t, std::string> opcode_map;
+
+	while(opcode_map.size() != 16) {
+		// Find the instruction which only match one opcode
+		for(auto it = instruction_statistics.cbegin(); it != instruction_statistics.cend(); ++it) {
+			if(hasElement(inst_assigned, it->first)) {
+				continue;
+			}
+			size_t num_matches = 0;
+			Inst_t last_match = 0;
+			for(Inst_t opcode = 0;opcode < 16; ++opcode) {
+				if(hasElement(opcode_assigned, opcode)) {
+					continue;
+				}
+				if(it->second[opcode] != 0) {
+					num_matches += 1;
+					last_match = opcode;
+				}
+			}
+			if(num_matches == 1) {
+				// Found a match.
+				opcode_map[last_match] = it->first;
+				inst_assigned.insert(it->first);
+				opcode_assigned.insert(last_match);
+			}
+		}
+	}
 
 	//Test that no opcode collides with any other, and opcode range
 	//Show mapping as well.
@@ -263,6 +306,20 @@ int main(int argc, char** argv) {
 			throw std::runtime_error("Invalid Opcode! Too large!");
 		}
 	});
+
+	// Run program!
+	Registers reg;
+	while(std::getline(infile, line)) {
+		if(line == "") {
+			continue;
+		}
+		// Get the instruction
+		get_instruction(line, instruction);
+		// run instruction
+		instructions[opcode_map[instruction[0]]](instruction[1], instruction[2], instruction[3], reg);
+	}
+
+	std::cout << "Program result is: " << reg(0) << std::endl;
 
 	return 0;
 }
