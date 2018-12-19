@@ -142,10 +142,11 @@ void eqrr(Inst_t A, Inst_t B, Inst_t C, Registers& in) {
 	}
 };
 
-std::vector<decltype(addr)*> instructions = {&addr, &addi, &mulr, &muli,
-                                             &banr, &bani, &borr, &bori,
-                                             &setr, &seti, &gtir, &gtri,
-                                             &gtrr, &eqir, &eqri, &eqrr};
+std::map<std::string,decltype(addr)*> instructions =
+ {{"addr", &addr}, {"addi", &addi}, {"mulr", &mulr}, {"muli", &muli},
+  {"banr", &banr}, {"bani", &bani}, {"borr", &borr}, {"bori", &bori},
+  {"setr", &setr}, {"seti", &seti}, {"gtir", &gtir}, {"gtri", &gtri},
+  {"gtrr", &gtrr}, {"eqir", &eqir}, {"eqri", &eqri}, {"eqrr", &eqrr}};
 
 Registers create_registers(std::string in) {
 	std::string inside = in.substr(1,in.size()-2);
@@ -175,7 +176,10 @@ int main(int argc, char** argv) {
 	std::string input_filepath;
 	bool verbose = false;
 	ArgParse::ArgParser Parser("Task 31");
+	size_t test_val = 0;
+	bool test_val_given = false;
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+	Parser.AddArgument("-t/--test-val", "Give a test value", &test_val, ArgParse::Argument::Optional, &test_val_given);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -195,8 +199,13 @@ int main(int argc, char** argv) {
 	Registers After;
 	Inst_t instruction[4];
 	size_t state = 0; // State 0 is looking for Begin.
+	size_t number_with_matches = 0;
 	while(std::getline(infile, line)) {
 		if(state == 0) {
+			if(line == "") {
+				// Reached end of first part.
+				break;
+			}
 			Begin = create_registers(line.substr(8));
 			state = 1;
 		} else if (state == 1) {
@@ -206,18 +215,42 @@ int main(int argc, char** argv) {
 			After = create_registers(line.substr(8));
 			state = 3;
 			size_t num_matching = 0;
-			ConstForEach(instructions, [&](decltype(addr)* inst) {
+			std::vector<std::string> inst_names;
+			ConstForEach(instructions, [&](const std::pair<std::string,decltype(addr)*>& item) {
 				Registers temp = Begin;
-				(*inst)(instruction[1], instruction[2], instruction[3], temp);
+				(*(item.second))(instruction[1], instruction[2], instruction[3], temp);
 				if(After == temp) {
 					num_matching += 1;
+					inst_names.push_back(item.first);
 				}
 			});
-			std::cout << "The test matched " << num_matching << " instructions" << std::endl;
+			if(num_matching >= 3) {
+				number_with_matches += 1;
+			}
+			if(verbose) {
+				std::cout << "The test matched " << num_matching << " instructions" << std::endl;
+				std::cout << "They are: (";
+				ConstForEach(inst_names, [](const std::string& name) {
+					std::cout << " " << name;
+				});
+				std::cout << ")" << std::endl;
+			}
 		} else if (state == 3) {
+			std::cout << "Skip state: (" << line << ")" << std::endl;
+			state = 0;
 			// Skip
 		} else {
 			throw std::runtime_error("This shouldn't happen!");
+		}
+	}
+
+	std::cout << number_with_matches << " examples matched 3 or more instructions" << std::endl;
+
+	if(test_val_given) {
+		if(number_with_matches == test_val) {
+			std::cout << "Test Passed!" << std::endl;
+		} else {
+			std::cout << "Test Failed!" << std::endl;
 		}
 	}
 
