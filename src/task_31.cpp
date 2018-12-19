@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
 			After = create_registers(line.substr(8));
 			state = 3;
 			size_t num_matching = 0;
-			std::for_each(instructions.cbegin(), instructions.cend(), [&](decltype(addr)* inst) {
+			ConstForEach(instructions, [&](decltype(addr)* inst) {
 				Registers temp = Begin;
 				(*inst)(instruction[1], instruction[2], instruction[3], temp);
 				if(After == temp) {
