@@ -44,3 +44,12 @@ bool hasElement(const container& cont, const type& el) {
 }
 #endif
 
+template<typename C, typename F>
+void ConstForEach(const C& container, F functor) {
+	std::for_each(container.cbegin(), container.cend(), functor);
+}
+
+template<typename C, typename F>
+void ForEach(C& container, F functor) {
+	std::for_each(container.begin(), container.end(), functor);
+}
