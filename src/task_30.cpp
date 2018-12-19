@@ -163,7 +163,6 @@ class entity {
 			pos = position(line_idx, x_idx);
 			this->team = team;
 			this->hp = 200;
-			this->ap = 3;
 			this->id = id;
 		}
 		position get_pos() const {
@@ -320,7 +319,7 @@ class entity {
 
 			if(targets.size() != 0) {
 				// Attack first target
-				entities[targets.begin()->second].hp -= this->ap;
+				entities[targets.begin()->second].hp -= this->get_ap();
 			}
 			return true;
 		}
@@ -332,7 +331,6 @@ class entity {
 		position pos;
 		char team;
 		int hp;
-		int ap;
 		int id;
 };
 
@@ -523,7 +521,6 @@ bool run_sim(const game_map& map, std::vector<entity>& entities, size_t& last_fu
 	}
 	size_t steps = 0;
 	bool combat_finished = false;
-	bool elf_died = false;
 	while(!combat_finished) {
 		// We first determine the turn order for the whole step.
 		typedef std::pair<position,int> turn_order;
@@ -554,8 +551,9 @@ bool run_sim(const game_map& map, std::vector<entity>& entities, size_t& last_fu
 			int dead_unit = -1;
 			for(size_t idx = 0; idx < entities.size(); ++idx) {
 				if(entities[idx].get_hp() <= 0) {
+					// Short circuit the sim if an elf dies.
 					if(entities[idx].get_team() == 'E') {
-						elf_died = true;
+						return true;
 					}
 					dead_unit = entities[idx].get_id();
 					break;
@@ -586,7 +584,7 @@ bool run_sim(const game_map& map, std::vector<entity>& entities, size_t& last_fu
 		std::cout << "----- After Step " << steps << " -----" << std::endl;
 		print_map(map, entities);
 	}
-	return elf_died;
+	return false;
 }
 
 int main(int argc, char** argv) {
@@ -643,9 +641,19 @@ int main(int argc, char** argv) {
 		print_map(map, initial_entities);
 	}
 
-	std::vector<entity> entities = initial_entities;
+	std::vector<entity> entities;
 	size_t last_full_step = 0;
-	run_sim(map, entities, last_full_step, verbose, super_verbose);
+	size_t num_sims = 0;
+	do {
+		entity::elf_ap += 1;
+		entities = initial_entities;
+		for(auto it = entities.cbegin(); it != entities.cend(); ++it) {
+			if(it->get_hp() < 0) {
+				throw std::runtime_error("This shouldn't happen!");
+			}
+		}
+		++num_sims;
+	} while(run_sim(map, entities, last_full_step, verbose, super_verbose));
 
 	int hp_sum = 0;
 	for(size_t idx = 0; idx < entities.size(); ++idx) {
@@ -658,6 +666,7 @@ int main(int argc, char** argv) {
 
 	std::cout << "Combat ends after " << last_full_step << " full rounds" << std::endl;
 	std::cout << name_map[entities[0].get_team()] << " win with " << hp_sum << " total hit points" <<  std::endl;
+	std::cout << "Elves had " << entity::elf_ap << " attack power " << std::endl;
 	std::cout << "The outcome is: " << last_full_step*hp_sum << std::endl;
 
 	if(test_val_passed) {
