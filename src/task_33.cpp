@@ -173,27 +173,30 @@ char get_tile(const point& p, const std::vector<Range>& Clay, const std::vector<
     return '.';
 }
 
-void print_state(point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
+void print_state(std::ostream& out, point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
     // Determine number of digits
     point::p_idx n_digits = ((point::p_idx) std::log10(y_max))+1;
 
     // Print the rest of the lines
     for(point::p_idx y = 0; y <= y_max; ++y) {
-        std::cout << std::setfill(' ') << std::setw(n_digits) << y << " ";
+        out << std::setfill(' ') << std::setw(n_digits) << y << " ";
         for(point::p_idx x = x_min; x <= x_max; ++x) {
-            std::cout << get_tile(point(x,y), Clay, WaterPassed, Water);
+            out << get_tile(point(x,y), Clay, WaterPassed, Water);
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 }
 
 int main(int argc, char** argv) {
     // Parse Arguments
     std::string input_filepath;
+    std::string output_filepath;
+    bool output_filepath_passed = false;
     bool verbose = false;
     ArgParse::ArgParser Parser("Task 33");
     Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
     Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
+    Parser.AddArgument("-o/--output-file", "A file to put a copy of the output", &output_filepath, ArgParse::Argument::Optional, &output_filepath_passed);
 
     if (Parser.ParseArgs(argc, argv) < 0) {
         std::cerr << "Problem parsing arguments!" << std::endl;
@@ -255,7 +258,7 @@ int main(int argc, char** argv) {
 
     if(verbose) {
         std::cout << "Initial State" << std::endl;
-        print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
     }
 
     // Start sim
@@ -417,7 +420,12 @@ int main(int argc, char** argv) {
 
     if(verbose) {
         std::cout << "Current State" << std::endl;
-        print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+    }
+
+    if(output_filepath_passed) {
+        std::ofstream ofile(output_filepath);
+        print_state(ofile, x_min, x_max, y_max, Clay, WaterPassed, Water);
     }
 
     size_t Water_total = 0;
