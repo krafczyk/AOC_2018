@@ -102,77 +102,33 @@ class Range {
 		point max;
 };
 
-char get_tile(point::p_idx x, point::p_idx y, const std::vector<Range>& Clay [[maybe_unused]], const std::vector<Range>& WaterPassed [[maybe_unused]], const std::vector<Range>& Water [[maybe_unused]]) {
+char get_tile(const point& p, const std::vector<Range>& Clay [[maybe_unused]], const std::set<point>& WaterPassed [[maybe_unused]], const std::set<point>& Water [[maybe_unused]]) {
+	if(p == point(500,0)) {
+		return '+';
+	}
 	for(auto it = Clay.cbegin(); it != Clay.cend(); ++it) {
-		if(it->contains(point(x,y))) {
+		if(it->contains(p)) {
 			return '#';
 		}
 	}
-	for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
-		if(it->contains(point(x,y))) {
-			return '|';
-		}
+	if(hasElement(WaterPassed, p)) {
+		return '|';
 	}
-	for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
-		if(it->contains(point(x,y))) {
-			return '~';
-		}
+	if(hasElement(Water, p)) {
+		return '~';
 	}
 	return '.';
 }
 
-void print_state(const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
-	point::p_idx fountain_x = 500;
-	// Determine min and max x and y.
-	point::p_idx x_min = std::numeric_limits<point::p_idx>::max();
-	point::p_idx x_max = std::numeric_limits<point::p_idx>::min();
-	point::p_idx y_min = std::numeric_limits<point::p_idx>::max();
-	point::p_idx y_max = std::numeric_limits<point::p_idx>::min();
-	ConstForEach(Clay, [&](const Range& Rng) {
-		if(Rng.get_max().get_x() > x_max) {
-			x_max = Rng.get_max().get_x();
-		}
-		if(Rng.get_min().get_x() < x_min) {
-			x_min = Rng.get_min().get_x();
-		}
-		if(Rng.get_max().get_y() > y_max) {
-			y_max = Rng.get_max().get_y();
-		}
-		if(Rng.get_min().get_y() < y_min) {
-			y_min = Rng.get_min().get_y();
-		}
-	});
-	// Widen by one..
-	x_min -= 1;
-	x_max += 1;
-	y_min = 1;
-
+void print_state(point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::set<point>& WaterPassed, const std::set<point>& Water) {
 	// Determine number of digits
 	point::p_idx n_digits = ((point::p_idx) std::log10(y_max))+1;
 
-	auto x_from_idx = [&](point::p_idx idx) {
-		return x_min+idx;
-	};
-	auto y_from_idx [[maybe_unused]] = [&](point::p_idx idx) {
-		return y_min+idx;
-	};
-
-	// Print top line
-	std::cout << std::setfill(' ') << std::setw(n_digits) << 0 << " ";
-	for(point::p_idx idx = 0; idx < x_max-x_min+1; ++idx) {
-		if(x_from_idx(idx) == fountain_x) {
-			std::cout << '+';
-		} else {
-			std::cout << '.';
-		}
-	}
-	std::cout << std::endl;
-
 	// Print the rest of the lines
-	for(point::p_idx y = 1; y <= y_max; ++y) {
+	for(point::p_idx y = 0; y <= y_max; ++y) {
 		std::cout << std::setfill(' ') << std::setw(n_digits) << y << " ";
 		for(point::p_idx x = x_min; x <= x_max; ++x) {
-			std::cout << get_tile(x,y, Clay, WaterPassed, Water);
+			std::cout << get_tile(point(x,y), Clay, WaterPassed, Water);
 		}
 		std::cout << std::endl;
 	}
@@ -218,10 +174,158 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	std::vector<Range> WaterPassed;
-	std::vector<Range> Water;
+	std::set<point> WaterPassed;
+	std::set<point> Water;
 
-	print_state(Clay, WaterPassed, Water);
+	point::p_idx x_min = std::numeric_limits<point::p_idx>::max();
+	point::p_idx x_max = std::numeric_limits<point::p_idx>::min();
+	point::p_idx y_min = std::numeric_limits<point::p_idx>::max();
+	point::p_idx y_max = std::numeric_limits<point::p_idx>::min();
+	ConstForEach(Clay, [&](const Range& Rng) {
+		if(Rng.get_max().get_x() > x_max) {
+			x_max = Rng.get_max().get_x();
+		}
+		if(Rng.get_min().get_x() < x_min) {
+			x_min = Rng.get_min().get_x();
+		}
+		if(Rng.get_max().get_y() > y_max) {
+			y_max = Rng.get_max().get_y();
+		}
+		if(Rng.get_min().get_y() < y_min) {
+			y_min = Rng.get_min().get_y();
+		}
+	});
+	// Widen by one..
+	x_min -= 1;
+	x_max += 1;
+	y_min = 1;
 
+	if(verbose) {
+		std::cout << "Initial State" << std::endl;
+		print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+	}
+
+
+
+	// Start sim
+
+	// Initial position.
+	point::p_idx x = x_min;
+	point::p_idx y = 1;
+
+	size_t state [[maybe_unused]] = 0;
+
+	// Not sure what the stopping condition should be.
+	bool changed = true;
+	while(changed) {
+		y = y_min;
+		//std::cout << "Round" << std::endl;
+		changed = false;
+		while(y<=y_max) {
+			std::cout << "Row " << y << std::endl;
+			x = x_min;
+			bool backup = false;
+			while(x <=x_max) {
+				char current_tile = get_tile(point(x,y), Clay, WaterPassed, Water);
+				char left_tile [[maybe_unused]] = get_tile(point(x-1,y), Clay, WaterPassed, Water);
+				char right_tile [[maybe_unused]] = get_tile(point(x+1,y), Clay, WaterPassed, Water);
+				char up_tile = get_tile(point(x,y-1), Clay, WaterPassed, Water);
+				char down_tile [[maybe_unused]] = get_tile(point(x,y+1), Clay, WaterPassed, Water);
+				//std::cout << " " << up_tile << " " << std::endl;
+				//std::cout << left_tile << current_tile << right_tile << std::endl;
+				//std::cout << " " << down_tile << " " << std::endl;
+				if(current_tile == '#') {
+					// Don't do anything!
+					++x;
+				} else if(current_tile == '.') {
+					// Water falls down always.
+					if((up_tile == '+')||(up_tile == '|')) {
+						if(!hasElement(WaterPassed, point(x,y))) {
+							WaterPassed.insert(point(x,y));
+							changed = true;
+						}
+					}
+					++x;
+				} else if (current_tile == '|') {
+					// Water spreads side to side.
+					//std::cout << "here 1" << std::endl;
+					if((down_tile == '#')||(down_tile == '~')) {
+						//std::cout << "here 2" << std::endl;
+						point::p_idx x_left = x;
+						bool left_wall = false;
+						while(true) {
+							char temp_left_tile = get_tile(point(x_left-1,y), Clay, WaterPassed, Water);
+							char temp_down_tile = get_tile(point(x_left,y+1), Clay, WaterPassed, Water);
+							if(temp_down_tile == '.') {
+								break;
+							} else if(temp_left_tile == '#') {
+								left_wall = true;
+								break;
+							}
+							--x_left;
+						}
+						point::p_idx x_right = x;
+						bool right_wall = false;
+						while(true) {
+							char temp_right_tile = get_tile(point(x_right+1,y), Clay, WaterPassed, Water);
+							char temp_down_tile = get_tile(point(x_right,y+1), Clay, WaterPassed, Water);
+							if(temp_down_tile == '.') {
+								break;
+							} else if(temp_right_tile == '#') {
+								right_wall = true;
+								break;
+							}
+							++x_right;
+						}
+						bool fill_water = false;
+						if(left_wall&&right_wall) {
+							fill_water = true;
+						}
+						// Fill characters in.
+						for(point::p_idx temp_x = x_left; temp_x <= x_right; ++temp_x) {
+							char the_tile = get_tile(point(temp_x, y), Clay, WaterPassed, Water);
+							if((the_tile == '|')&&(fill_water)) {
+								removeFirst(WaterPassed, point(temp_x,y));
+								changed = true;
+							}
+							if((the_tile == '~')||(the_tile == '#')) {
+								throw std::runtime_error("This shouldn't happen!");
+							}
+							if(fill_water) {
+								Water.insert(point(temp_x,y));
+								changed = true;
+							} else {
+								if(the_tile == '.') {
+									WaterPassed.insert(point(temp_x,y));
+									changed = true;
+								} else if(the_tile != '|') {
+									throw std::runtime_error("This shouldn't happen either");
+								}
+							}
+						}
+						// Advance.
+						backup = true;
+						x = x_right;
+					} else {
+						++x;
+					}
+				} else if (current_tile == '~') {
+					// Don't do anything
+					++x;
+				}
+			}
+			if(backup) {
+				std::cout << "Backup set" << std::endl;
+				--y;
+			} else {
+				++y;
+			}
+		}
+		std::cout << "New State" << std::endl;
+		print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+	}
+
+	std::cout << "Current State" << std::endl;
+	print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
 	return 0;
 }
