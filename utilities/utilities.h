@@ -53,3 +53,24 @@ template<typename C, typename F>
 void ForEach(C& container, F functor) {
 	std::for_each(container.begin(), container.end(), functor);
 }
+
+template<typename C, typename type>
+void removeFirst(C& container, const type& el) {
+	for(auto it = container.begin(); it != container.end(); ++it) {
+		if(*it == el) {
+			container.erase(it);
+			break;
+		}
+	}
+}
+
+template<typename C, typename type>
+void removeAll(C& container, const type& el) {
+	for(auto it = container.begin(); it != container.end();) {
+		if(*it == el) {
+			it = container.erase(it);
+		} else {
+			++it;
+		}
+	}
+}
