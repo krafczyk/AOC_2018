@@ -97,12 +97,15 @@ class Range {
 		const point& get_max() const {
 			return this->max;
 		}
+		size_t size() const {
+			return (this->max.get_x()-this->min.get_x()+1)*(this->max.get_y()-this->min.get_y()+1);
+		}
 	private:
 		point min;
 		point max;
 };
 
-char get_tile(const point& p, const std::vector<Range>& Clay [[maybe_unused]], const std::set<point>& WaterPassed [[maybe_unused]], const std::set<point>& Water [[maybe_unused]]) {
+char get_tile(const point& p, const std::vector<Range>& Clay [[maybe_unused]], const std::set<point>& WaterPassed [[maybe_unused]], const std::vector<Range>& Water [[maybe_unused]]) {
 	if(p == point(500,0)) {
 		return '+';
 	}
@@ -114,13 +117,15 @@ char get_tile(const point& p, const std::vector<Range>& Clay [[maybe_unused]], c
 	if(hasElement(WaterPassed, p)) {
 		return '|';
 	}
-	if(hasElement(Water, p)) {
-		return '~';
+	for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
+		if(it->contains(p)) {
+			return '~';
+		}
 	}
 	return '.';
 }
 
-void print_state(point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::set<point>& WaterPassed, const std::set<point>& Water) {
+void print_state(point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::set<point>& WaterPassed, const std::vector<Range>& Water) {
 	// Determine number of digits
 	point::p_idx n_digits = ((point::p_idx) std::log10(y_max))+1;
 
@@ -175,7 +180,7 @@ int main(int argc, char** argv) {
 	}
 
 	std::set<point> WaterPassed;
-	std::set<point> Water;
+	std::vector<Range> Water;
 
 	point::p_idx x_min = std::numeric_limits<point::p_idx>::max();
 	point::p_idx x_max = std::numeric_limits<point::p_idx>::min();
@@ -215,9 +220,10 @@ int main(int argc, char** argv) {
 
 	// Not sure what the stopping condition should be.
 	bool changed = true;
+	point::p_idx max_y = 0;
 	while(changed) {
 		y = y_min;
-		//std::cout << "Round" << std::endl;
+		std::cout << "Round" << std::endl;
 		changed = false;
 		while(y<=y_max) {
 			x = x_min;
@@ -285,9 +291,6 @@ int main(int argc, char** argv) {
 								throw std::runtime_error("This shouldn't happen!");
 							}
 							if(fill_water) {
-								Water.insert(point(temp_x,y));
-								changed = true;
-								backup = true;
 							} else {
 								if(the_tile == '.') {
 									WaterPassed.insert(point(temp_x,y));
@@ -297,6 +300,11 @@ int main(int argc, char** argv) {
 									throw std::runtime_error("This shouldn't happen either");
 								}
 							}
+						}
+						if(fill_water) {
+							Water.push_back(Range(point(x_left,y),point(x_right,y)));
+							changed = true;
+							backup = true;
 						}
 						// Advance.
 						x = x_right;
@@ -313,18 +321,20 @@ int main(int argc, char** argv) {
 			} else {
 				++y;
 			}
+			if(y > max_y) {
+				max_y = y;
+				std::cout << "Reached depth of " << max_y << std::endl;
+			}
 		}
 	}
 
+	std::cout << "Checking overlap" << std::endl;
 	// Check that there is no overlap
 	for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
-		if(hasElement(Water, *it)) {
-			throw std::runtime_error("WaterPassed has members in Water!");
-		}
-	}
-	for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
-		if(hasElement(WaterPassed, *it)) {
-			throw std::runtime_error("Water has members in WaterPassed!");
+		for(auto it_2 = Water.cbegin(); it_2 != Water.cend(); ++it_2) {
+			if(it_2->contains(*it)) {
+				throw std::runtime_error("WaterPassed has members in Water!");
+			}
 		}
 	}
 
@@ -333,6 +343,10 @@ int main(int argc, char** argv) {
 		print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
 	}
 
-	std::cout << "There are a total of " << WaterPassed.size()+Water.size() << " tiles the water can reach." << std::endl;
+	size_t Water_total = 0;
+	ConstForEach(Water, [&](const Range& rng) {
+		Water_total += rng.size();
+	});
+	std::cout << "There are a total of " << WaterPassed.size()+Water_total << " tiles the water can reach." << std::endl;
 	return 0;
 }
