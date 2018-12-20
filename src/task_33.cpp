@@ -49,6 +49,19 @@ class point {
 			answer.y = in.y;
 			return answer;
 		}
+		bool operator<(const point& rhs) const {
+			if(this->y < rhs.y) {
+				return true;
+			} else if (this->y == rhs.y) {
+				if(this->x < rhs.x) {
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
 	private:
 		p_idx x;
 		p_idx y;
@@ -57,12 +70,6 @@ class point {
 
 class Range {
 	public:
-		//Range(const std::string& line) {
-		//	bool x_mode = true;
-		//	if(line[0] == 'y') {
-		//		x_mode = false;
-		//	}
-		//}
 		Range(const point& P1, const point& P2) {
 			this->min = point(std::min(P1.get_x(),P2.get_x()),
 					  std::min(P1.get_y(),P2.get_y()));
@@ -95,7 +102,26 @@ class Range {
 		point max;
 };
 
-void print_state(const std::vector<Range>& Clay) {
+char get_tile(point::p_idx x, point::p_idx y, const std::vector<Range>& Clay [[maybe_unused]], const std::vector<Range>& WaterPassed [[maybe_unused]], const std::vector<Range>& Water [[maybe_unused]]) {
+	for(auto it = Clay.cbegin(); it != Clay.cend(); ++it) {
+		if(it->contains(point(x,y))) {
+			return '#';
+		}
+	}
+	for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
+		if(it->contains(point(x,y))) {
+			return '|';
+		}
+	}
+	for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
+		if(it->contains(point(x,y))) {
+			return '~';
+		}
+	}
+	return '.';
+}
+
+void print_state(const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
 	point::p_idx fountain_x = 500;
 	// Determine min and max x and y.
 	point::p_idx x_min = std::numeric_limits<point::p_idx>::max();
@@ -146,18 +172,7 @@ void print_state(const std::vector<Range>& Clay) {
 	for(point::p_idx y = 1; y <= y_max; ++y) {
 		std::cout << std::setfill(' ') << std::setw(n_digits) << y << " ";
 		for(point::p_idx x = x_min; x <= x_max; ++x) {
-			bool is_clay = false;
-			for(auto it = Clay.cbegin(); it != Clay.cend(); ++it) {
-				if(it->contains(point(x,y))) {
-					is_clay = true;
-					break;
-				}
-			}
-			if(is_clay) {
-				std::cout << '#';
-			} else {
-				std::cout << '.';
-			}
+			std::cout << get_tile(x,y, Clay, WaterPassed, Water);
 		}
 		std::cout << std::endl;
 	}
@@ -203,7 +218,10 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	print_state(Clay);
+	std::vector<Range> WaterPassed;
+	std::vector<Range> Water;
+
+	print_state(Clay, WaterPassed, Water);
 
 	return 0;
 }
