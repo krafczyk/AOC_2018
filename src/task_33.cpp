@@ -205,8 +205,6 @@ int main(int argc, char** argv) {
 		print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
 	}
 
-
-
 	// Start sim
 
 	// Initial position.
@@ -222,7 +220,6 @@ int main(int argc, char** argv) {
 		//std::cout << "Round" << std::endl;
 		changed = false;
 		while(y<=y_max) {
-			std::cout << "Row " << y << std::endl;
 			x = x_min;
 			bool backup = false;
 			while(x <=x_max) {
@@ -231,9 +228,6 @@ int main(int argc, char** argv) {
 				char right_tile [[maybe_unused]] = get_tile(point(x+1,y), Clay, WaterPassed, Water);
 				char up_tile = get_tile(point(x,y-1), Clay, WaterPassed, Water);
 				char down_tile [[maybe_unused]] = get_tile(point(x,y+1), Clay, WaterPassed, Water);
-				//std::cout << " " << up_tile << " " << std::endl;
-				//std::cout << left_tile << current_tile << right_tile << std::endl;
-				//std::cout << " " << down_tile << " " << std::endl;
 				if(current_tile == '#') {
 					// Don't do anything!
 					++x;
@@ -248,15 +242,13 @@ int main(int argc, char** argv) {
 					++x;
 				} else if (current_tile == '|') {
 					// Water spreads side to side.
-					//std::cout << "here 1" << std::endl;
 					if((down_tile == '#')||(down_tile == '~')) {
-						//std::cout << "here 2" << std::endl;
 						point::p_idx x_left = x;
 						bool left_wall = false;
 						while(true) {
 							char temp_left_tile = get_tile(point(x_left-1,y), Clay, WaterPassed, Water);
 							char temp_down_tile = get_tile(point(x_left,y+1), Clay, WaterPassed, Water);
-							if(temp_down_tile == '.') {
+							if((temp_down_tile == '.')||(temp_down_tile == '|')) {
 								break;
 							} else if(temp_left_tile == '#') {
 								left_wall = true;
@@ -269,7 +261,7 @@ int main(int argc, char** argv) {
 						while(true) {
 							char temp_right_tile = get_tile(point(x_right+1,y), Clay, WaterPassed, Water);
 							char temp_down_tile = get_tile(point(x_right,y+1), Clay, WaterPassed, Water);
-							if(temp_down_tile == '.') {
+							if((temp_down_tile == '.')||(temp_down_tile == '|')) {
 								break;
 							} else if(temp_right_tile == '#') {
 								right_wall = true;
@@ -287,6 +279,7 @@ int main(int argc, char** argv) {
 							if((the_tile == '|')&&(fill_water)) {
 								removeFirst(WaterPassed, point(temp_x,y));
 								changed = true;
+								backup = true;
 							}
 							if((the_tile == '~')||(the_tile == '#')) {
 								throw std::runtime_error("This shouldn't happen!");
@@ -294,17 +287,18 @@ int main(int argc, char** argv) {
 							if(fill_water) {
 								Water.insert(point(temp_x,y));
 								changed = true;
+								backup = true;
 							} else {
 								if(the_tile == '.') {
 									WaterPassed.insert(point(temp_x,y));
 									changed = true;
+									backup = true;
 								} else if(the_tile != '|') {
 									throw std::runtime_error("This shouldn't happen either");
 								}
 							}
 						}
 						// Advance.
-						backup = true;
 						x = x_right;
 					} else {
 						++x;
@@ -315,17 +309,30 @@ int main(int argc, char** argv) {
 				}
 			}
 			if(backup) {
-				std::cout << "Backup set" << std::endl;
 				--y;
 			} else {
 				++y;
 			}
 		}
-		std::cout << "New State" << std::endl;
+	}
+
+	// Check that there is no overlap
+	for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
+		if(hasElement(Water, *it)) {
+			throw std::runtime_error("WaterPassed has members in Water!");
+		}
+	}
+	for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
+		if(hasElement(WaterPassed, *it)) {
+			throw std::runtime_error("Water has members in WaterPassed!");
+		}
+	}
+
+	if(verbose) {
+		std::cout << "Current State" << std::endl;
 		print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
 	}
 
-	std::cout << "Current State" << std::endl;
-	print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+	std::cout << "There are a total of " << WaterPassed.size()+Water.size() << " tiles the water can reach." << std::endl;
 	return 0;
 }
