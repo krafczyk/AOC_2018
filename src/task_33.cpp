@@ -193,10 +193,12 @@ int main(int argc, char** argv) {
     std::string output_filepath;
     bool output_filepath_passed = false;
     bool verbose = false;
+    int count_max = 0;
     ArgParse::ArgParser Parser("Task 33");
     Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
     Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
     Parser.AddArgument("-o/--output-file", "A file to put a copy of the output", &output_filepath, ArgParse::Argument::Optional, &output_filepath_passed);
+    Parser.AddArgument("-c/--count-max", "Set count", &count_max, ArgParse::Argument::Optional);
 
     if (Parser.ParseArgs(argc, argv) < 0) {
         std::cerr << "Problem parsing arguments!" << std::endl;
@@ -270,9 +272,9 @@ int main(int argc, char** argv) {
 
     // Not sure what the stopping condition should be.
     bool changed = true;
-    //size_t count = 0;
+    size_t count = 0;
     while(changed) {
-        //std::cout << "New Loop" << std::endl;
+        std::cout << "New Loop" << std::endl;
         changed = false;
         for(auto it = WaterPassed.begin(); it != WaterPassed.end(); ++it) {
             //std::cout << "Considering range: " << it->get_str() << std::endl;
@@ -348,9 +350,9 @@ int main(int argc, char** argv) {
                     if(right_tile == '#') {
                         right_wall = true;
                     }
-                    it->mod_down(-1);
                     //std::cout << "change 2" << std::endl;
                     changed = true;
+                    it->mod_down(-1);
                     if(left_wall&&right_wall) {
                         Range rng(point(x_left,y),point(x_right,y));
                         // Find whether there's a compatible water range already
@@ -392,8 +394,8 @@ int main(int argc, char** argv) {
                         if(get_tile(point(x_right,y+1), Clay, WaterPassed, Water) != '~') {
                             WaterPassed.push_back(Range(point(x_right,y+1),point(x_right,y+1)));
                         }
-                        //std::cout << "Special State" << std::endl;
-                        //print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+                        std::cout << "Special State" << std::endl;
+                        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
                         break;
                     }
                 }
@@ -402,10 +404,11 @@ int main(int argc, char** argv) {
         //std::cout << "New State" << std::endl;
         //print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
 
-        //++count;
-        //if(count > 12) {
-        //    throw std::runtime_error("Stop early");
-        //}
+        ++count;
+        if((count_max != 0)&&(count > 12)) {
+            std::cout << "Current State" << std::endl;
+            print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+        }
     }
 
     //std::cout << "Checking overlap" << std::endl;
