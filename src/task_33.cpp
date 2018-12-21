@@ -7,6 +7,7 @@
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include <utility>
 #include <regex>
 #include "ArgParseStandalone.h"
 #include "utilities.h"
@@ -151,7 +152,7 @@ class Range {
         point max;
 };
 
-char get_tile(const point& p, const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
+char get_tile(const point& p, const std::vector<Range>& Clay, const std::set<point>& WaterPassed, const std::vector<Range>& Water) {
     if(p == point(500,0)) {
         return '+';
     }
@@ -160,10 +161,8 @@ char get_tile(const point& p, const std::vector<Range>& Clay, const std::vector<
             return '#';
         }
     }
-    for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
-        if(it->contains(p)) {
-            return '|';
-        }
+    if(hasElement(WaterPassed, p)) {
+        return '|';
     }
     for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
         if(it->contains(p)) {
@@ -173,7 +172,7 @@ char get_tile(const point& p, const std::vector<Range>& Clay, const std::vector<
     return '.';
 }
 
-void print_state(std::ostream& out, point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::vector<Range>& WaterPassed, const std::vector<Range>& Water) {
+void print_state(std::ostream& out, point::p_idx x_min, point::p_idx x_max, point::p_idx y_max, const std::vector<Range>& Clay, const std::set<point>& WaterPassed, const std::vector<Range>& Water) {
     // Determine number of digits
     point::p_idx n_digits = ((point::p_idx) std::log10(y_max))+1;
 
@@ -232,7 +231,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::vector<Range> WaterPassed;
+    std::set<point> WaterPassed;
     std::vector<Range> Water;
 
     point::p_idx x_min = std::numeric_limits<point::p_idx>::max();
@@ -266,148 +265,138 @@ int main(int argc, char** argv) {
     // Start sim
 
     // Initial range.
-    WaterPassed.push_back(Range(point(500,1),point(500,1)));
+    WaterPassed.insert(point(500,1));
 
     size_t state [[maybe_unused]] = 0;
 
     // Not sure what the stopping condition should be.
-    bool changed = true;
-    size_t count = 0;
-    while(changed) {
-        std::cout << "New Loop" << std::endl;
-        changed = false;
-        for(auto it = WaterPassed.begin(); it != WaterPassed.end(); ++it) {
-            //std::cout << "Considering range: " << it->get_str() << std::endl;
-            //std::cout << "All WaterPassed Ranges:" << std::endl;
-            //ConstForEach(WaterPassed, [](const Range& rng) {
-            //        std::cout << rng.get_str() << std::endl;
-            //});
-            //std::cout << "All Water Ranges:" << std::endl;
-            //ConstForEach(Water, [](const Range& rng) {
-            //        std::cout << rng.get_str() << std::endl;
-            //});
-            // Find and extend vertical groups
-            if(it->is_vertical()) {
-                // Check bottom
-                char tile = get_tile(point(it->get_min().get_x(), it->get_max().get_y()+1),
-                                     Clay, WaterPassed, Water);
-                if(tile == '.') {
-                    // Extend down until you hit another tile.
-                    point::p_idx temp_y = it->get_max().get_y()+1;
-                    //std::cout << "y_max: " << y_max << std::endl;
-                    char down_tile = get_tile(point(it->get_min().get_x(), temp_y+1), Clay, WaterPassed, Water);
-                    while((down_tile == '.')&&(temp_y <= y_max)) {
-                        ++temp_y;
-                        down_tile = get_tile(point(it->get_min().get_x(), temp_y+1), Clay, WaterPassed, Water);
-                    }
-                    if(temp_y > y_max) {
-                        temp_y = y_max;
-                    }
-                    down_tile = get_tile(point(it->get_min().get_x(), temp_y+1), Clay, WaterPassed, Water);
-                    //std::cout << "temp_y: " << temp_y << std::endl;
-                    //std::cout << "it->get_max().get_y(): " << it->get_max().get_y() << std::endl;
-                    if(temp_y != it->get_max().get_y()) {
-                        //std::cout << "diff: " << temp_y-it->get_max().get_y() << std::endl;
-                        it->mod_down(temp_y-it->get_max().get_y());
-                        //std::cout << "it->get_max().get_y(): " << it->get_max().get_y() << std::endl;
-                        //std::cout << "change 1" << std::endl;
-                        changed = true;
-                    }
-                }
-                // Load new tile after an extend.
-                if(changed) {
-                    tile = get_tile(point(it->get_min().get_x(), it->get_max().get_y()+1),
-                                          Clay, WaterPassed, Water);
-                }
-                if((tile == '#')||(tile == '~')) {
-                    // We have water.
-                    point::p_idx x_left = it->get_min().get_x();
-                    point::p_idx x_right = it->get_max().get_x();
-                    point::p_idx y = it->get_max().get_y();
-                    // search left
-                    bool left_wall = false;
-                    char left_tile = get_tile(point(x_left-1,y), Clay, WaterPassed, Water);
-                    char down_tile = get_tile(point(x_left,y+1), Clay, WaterPassed, Water);
-                    while((left_tile == '.')&&((down_tile == '#')||(down_tile == '~'))) {
-                        //std::cout << "Searching left" << std::endl;
-                        --x_left;
-                        left_tile = get_tile(point(x_left-1,y), Clay, WaterPassed, Water);
-                        down_tile = get_tile(point(x_left,y+1), Clay, WaterPassed, Water);
-                    }
-                    if(left_tile == '#') {
-                        left_wall = true;
-                    }
-                    // search right
-                    bool right_wall = false;
-                    char right_tile = get_tile(point(x_right+1,y), Clay, WaterPassed, Water);
-                    down_tile = get_tile(point(x_right,y+1), Clay, WaterPassed, Water);
-                    while((right_tile == '.')&&((down_tile == '#')||(down_tile == '~'))) {
-                        //std::cout << "Searching right" << std::endl;
-                        ++x_right;
-                        right_tile = get_tile(point(x_right+1,y), Clay, WaterPassed, Water);
-                        down_tile = get_tile(point(x_right,y+1), Clay, WaterPassed, Water);
-                    }
-                    if(right_tile == '#') {
-                        right_wall = true;
-                    }
-                    //std::cout << "change 2" << std::endl;
-                    changed = true;
-                    it->mod_down(-1);
-                    if(left_wall&&right_wall) {
-                        Range rng(point(x_left,y),point(x_right,y));
-                        // Find whether there's a compatible water range already
-                        bool found_compatible = false;
-                        for(auto r_it = Water.begin(); r_it != Water.end(); ++r_it) {
-                            if((r_it->get_min().get_x() == x_left)&&
-                               (r_it->get_max().get_x() == x_right)&&
-                               (r_it->get_min().get_y() == y+1)) {
-                                found_compatible = true;
-                                //std::cout << "Stretched one up!" << std::endl;
-                                r_it->mod_up(1);
-                                break;
-                            }
-                        }
-                        if(!found_compatible) {
-                            //std::cout << "Add new water range!" << std::endl;
-                            Water.push_back(Range(point(x_left,y),point(x_right,y)));
-                        }
-                    } else {
-                        //std::cout << "Adding more water passing" << std::endl;
-                        // Check for 'compatible' water passing.
-                        bool found_compatible = false;
-                        for(auto r_it = WaterPassed.begin(); r_it != WaterPassed.end(); ++r_it) {
-                            if(r_it->is_horizontal()) {
-                                if((r_it->get_min().get_y() == y)&&
-                                   (r_it->get_min().get_x() <= x_right)&&
-                                   (r_it->get_max().get_x() >= x_left)) {
-                                    found_compatible = true;
-                                }
-                            }
-                        }
-                        if(found_compatible) {
-                            throw std::runtime_error("This shouldn't happen!");
-                        }
-                        WaterPassed.push_back(Range(point(x_left,y),point(x_right,y)));
-                        if(get_tile(point(x_left,y+1), Clay, WaterPassed, Water) != '~') {
-                            WaterPassed.push_back(Range(point(x_left,y+1),point(x_left,y+1)));
-                        }
-                        if(get_tile(point(x_right,y+1), Clay, WaterPassed, Water) != '~') {
-                            WaterPassed.push_back(Range(point(x_right,y+1),point(x_right,y+1)));
-                        }
-                        std::cout << "Special State" << std::endl;
-                        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
-                        break;
-                    }
+    for(auto it = WaterPassed.begin(); it != WaterPassed.end();) {
+        char down_tile = get_tile(point(it->get_x(),it->get_y()+1), Clay, WaterPassed, Water);
+        // Always extend down if empty.?
+        if(down_tile == '.') {
+            if(it->get_y()+1 <= y_max) {
+                // Only if we're not off the max.
+                auto temp_it = WaterPassed.insert(it, point(it->get_x(),it->get_y()+1));
+                if(std::distance(it, temp_it) < 0) {
+                    std::swap(it,temp_it);
                 }
             }
-        }
-        //std::cout << "New State" << std::endl;
-        //print_state(x_min, x_max, y_max, Clay, WaterPassed, Water);
+        } else if((down_tile == '~')||(down_tile == '#')) {
 
-        ++count;
-        if((count_max != 0)&&(count > 12)) {
-            std::cout << "Current State" << std::endl;
-            print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+            // We look left to right to see whether we should
+            // Add a water line.
+            point::p_idx y = it->get_y();
+            point::p_idx x_left = it->get_x();
+            point::p_idx x_right = it->get_x();
+            bool left_wall = false;
+            bool right_wall = false;
+            while(true) {
+                char left_tile = get_tile(point(x_left-1,y), Clay, WaterPassed, Water);
+                char temp_down = get_tile(point(x_left,y+1), Clay, WaterPassed, Water);
+                if((temp_down == '~')||(temp_down == '#')) {
+                    if(left_tile == '#') {
+                        // Found a wall
+                        left_wall = true;
+                        break;
+                    } else {
+                        // Move left
+                        --x_left;
+                    }
+                } else {
+                    // Otherwise, we have to stop.
+                    break;
+                }
+            }
+            while(true) {
+                char right_tile = get_tile(point(x_right+1,y), Clay, WaterPassed, Water);
+                char temp_down = get_tile(point(x_right,y+1), Clay, WaterPassed, Water);
+                if((temp_down == '~')||(temp_down == '#')) {
+                    if(right_tile == '#') {
+                        // Found a wall
+                        right_wall = true;
+                        break;
+                    } else {
+                        // Move right
+                        ++x_right;
+                    }
+                } else {
+                    // Otherwise, we have to stop.
+                    break;
+                }
+            }
+            // We need to add a line, the question is whether its water or not.
+            if(left_wall&&right_wall) {
+
+
+                // Water
+                // Check for compatible ranges we can use to stretch up.
+                bool found_compatible = false;
+                for(auto r_it = Water.begin(); r_it != Water.end(); ++r_it) {
+                    if((r_it->get_min().get_x() == x_left)&&
+                       (r_it->get_max().get_x() == x_right)&&
+                       (r_it->get_min().get_y() == y+1)) {
+                        found_compatible = true;
+                        r_it->mod_up(1);
+                        // Back it up one row.
+                        while(it->get_y() > y-1) {
+                            --it;
+                        }
+                        // // Remove passing elements in this new expanded range.
+                        for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
+                                if(r_it->contains(*p_it)) {
+                                    if(std::distance(it, p_it) <= 0) {
+                                        // Move the iterator in front of the deleted elements.
+                                        std::advance(it, std::distance(it,p_it)-1);
+                                    }
+                                    p_it = WaterPassed.erase(p_it);
+                                } else {
+                                    ++p_it;
+                                }
+                        }
+                        std::cout << "Special state 2" << std::endl;
+                        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+                        break; // break from range loop
+                    }
+                }
+                if(!found_compatible) {
+                    // Need to add a new range.
+                    Range rng(point(x_left, y),point(x_right,y));
+                    Water.push_back(rng);
+                    // Remove passing elements in this new expanded range.
+                    for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
+                        if(rng.contains(*p_it)) {
+                            if(std::distance(it, p_it) <= 0) {
+                                // Move the iterator in front of the deleted elements.
+                                std::advance(it, std::distance(it,p_it)-1);
+                            }
+                            p_it = WaterPassed.erase(p_it);
+                        } else {
+                            ++p_it;
+                        }
+                    }
+                }
+            } else {
+                // Add water passing. May not be a new thing.
+                std::cout << "before: " << it->get_str() << std::endl;
+                for(point::p_idx x_temp = x_left; x_temp <= x_right; ++x_temp) {
+                    // Add if it doesn't exist already.
+                    point p(x_temp,y);
+                    if(!hasElement(WaterPassed, p)) {
+                        std::cout << "Inserting element" << std::endl;
+                        auto temp_it = WaterPassed.insert(it, p);
+                        std::cout << "done: " << temp_it->get_str() << std::endl;
+                        std::cout << "distance: " << std::distance(it, temp_it) << std::endl;
+                        std::cout << "done distance" << std::endl;
+                        if(std::distance(it, temp_it) <= 0) {
+                            std::advance(it, std::distance(it, temp_it)-1);
+                        }
+                    }
+                }
+                std::cout << "after: " << it->get_str() << std::endl;
+                throw std::runtime_error("early");
+            }
+        } else {
+            ++it;
         }
     }
 
@@ -415,7 +404,7 @@ int main(int argc, char** argv) {
     // Check that there is no overlap
     for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
         for(auto it_2 = Water.cbegin(); it_2 != Water.cend(); ++it_2) {
-            if(it_2->interferes(*it)) {
+            if(it_2->contains(*it)) {
                 throw std::runtime_error("WaterPassed has members in Water!");
             }
         }
@@ -435,9 +424,6 @@ int main(int argc, char** argv) {
     ConstForEach(Water, [&](const Range& rng) {
         Water_total += rng.size();
     });
-    ConstForEach(WaterPassed, [&](const Range& rng) {
-        Water_total += rng.size();
-    });
-    std::cout << "There are a total of " << Water_total << " tiles the water can reach." << std::endl;
+    std::cout << "There are a total of " << Water_total+WaterPassed.size() << " tiles the water can reach." << std::endl;
     return 0;
 }
