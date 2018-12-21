@@ -74,3 +74,8 @@ void removeAll(C& container, const type& el) {
 		}
 	}
 }
+
+template<typename C, typename F>
+void removeIf(C& container, F functor) {
+    std::remove_if(container.begin(), container.end(), functor);
+}
