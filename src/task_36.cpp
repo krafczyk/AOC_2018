@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include <fstream>
 #include <string>
 #include <set>
@@ -6,6 +7,7 @@
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include <ncurses.h>
 #include "ArgParseStandalone.h"
 #include "utilities.h"
 
@@ -14,12 +16,14 @@ class lumberyard_state {
         lumberyard_state(int in_size) {
             this->size = in_size;
             lumberyard = new char[size*size];
+            this->line = new char[size+1];
             for(int idx = 0; idx < size*size; ++idx) {
                 lumberyard[idx] = 0;
             }
         }
         ~lumberyard_state() {
             delete [] lumberyard;
+            delete [] line;
         }
         char& assign(int x_idx, int line_idx) {
             return lumberyard[line_idx*size+x_idx];
@@ -62,8 +66,34 @@ class lumberyard_state {
                 out << std::endl;
             }
         }
+        void print_ncurses(long minute) const {
+            int row,col;
+            getmaxyx(stdscr,row,col);
+            int line_idx = 0;
+            while((line_idx < size)&&(line_idx < row)) {
+                int x_idx = 0;
+                while((x_idx < size)&&(x_idx < col)) {
+                    line[x_idx] = (*this)(line_idx,x_idx);
+                    ++x_idx;
+                }
+                // Add null character.
+                line[x_idx+1] = 0;
+                mvprintw(line_idx, 0, "%s", this->line);
+                ++line_idx;
+            }
+            // Print minutes
+            std::stringstream ss;
+            ss << minute;
+            mvprintw(0, size+3, "minute: %s", ss.str().c_str());
+            refresh();
+        }
+        int resource_value() const {
+            auto the_map = this->all_stats();
+            return the_map['|']*the_map['#'];
+        }
     private:
         int size;
+        char* line;
         char* lumberyard;
 };
 
@@ -103,14 +133,17 @@ int main(int argc, char** argv) {
         line_idx += 1;
     }
 
+    // Here we initialize ncurses.
+    initscr();
+
     if(verbose) {
-        std::cout << "Initial State:" << std::endl;
         current_lumberyard->print(std::cout);
     }
 
-    int minutes = 0;
-    auto prev_state = current_lumberyard->all_stats();
+    long minutes = 0;
     bool repeats = false;
+    std::vector<int> prev_resource_values;
+    prev_resource_values.push_back(current_lumberyard->resource_value());
     while(!repeats) {
         // Get next lumberyard
         for(int line_idx = 0; line_idx < size; ++line_idx) {
@@ -145,46 +178,37 @@ int main(int argc, char** argv) {
         current_lumberyard = next_lumberyard;
         next_lumberyard = temp;
         // Check for repeating state
-        auto current_state = current_lumberyard->all_stats();
-        if(prev_state == current_state) {
-            if(verbose) {
-                std::cout << "Repeat occurs on minute " << minutes << std::endl;
-            }
+        int resource_value = current_lumberyard->resource_value();
+        if(hasElement(prev_resource_values, resource_value)) {
             repeats = true;
+        } else {
+            prev_resource_values.push_back(resource_value);
         }
-        prev_state = current_state;
         // Increment and display info.
         minutes += 1;
-        if(super_verbose) {
-            std::cout << "Minute " << minutes << std::endl;
-            current_lumberyard->print(std::cout);
-        }
+        current_lumberyard->print_ncurses(minutes);
+        //if(super_verbose) {
+        //    std::cout << "Minute " << minutes << std::endl;
+        //    current_lumberyard->print(std::cout);
+        //}
+        // sleep after each round.
+        usleep(1000000/60);
     }
 
+    // Stop ncurses.
+    endwin();
+
+    // Final reporting
     if(verbose) {
         std::cout << "Final State:" << std::endl;
         current_lumberyard->print(std::cout);
     }
 
-    // Calculate resource value:
-    int num_lumberyards = 0;
-    int num_woods = 0;
-    for(int line_idx = 0; line_idx < size; ++line_idx) {
-        for(int x_idx = 0; x_idx < size; ++x_idx) {
-            char tile = (*current_lumberyard)(line_idx,x_idx);
-            if(tile == '|') {
-                num_woods += 1;
-            }
-            if(tile == '#') {
-                num_lumberyards += 1;
-            }
-        }
-    }
-
+    std::cout << "Simulated " << minutes << " minutes" << std::endl;
     if(repeats) {
         std::cout << "Lumberyard repeats after " << minutes << " minutes." << std::endl;
     }
-    std::cout << "Resource Value is: " << num_lumberyards*num_woods << std::endl;
+    std::cout << "Resource Value is: " << current_lumberyard->resource_value() << std::endl;
 
 	return 0;
 }

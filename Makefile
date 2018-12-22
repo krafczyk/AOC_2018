@@ -10,5 +10,8 @@ all: ./bin/task_1 ./bin/task_2 ./bin/task_3 ./bin/task_4 ./bin/task_5 ./bin/task
 ./bin/% : ./src/%.cpp 
 	$(CXX) $(CXXFLAGS) $< -o $@
 
+./bin/task_36 : ./src/task_36.cpp
+	$(CXX) $(CXXFLAGS) $< -o $@ -lncurses
+
 clean:
 	rm -rf ./bin/*
