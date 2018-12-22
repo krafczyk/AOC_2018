@@ -103,8 +103,10 @@ int main(int argc, char** argv) {
 	bool verbose = false;
     bool super_verbose = false;
     int size = 50;
+    long num_minutes = 0;
 	ArgParse::ArgParser Parser("Task 36");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+    Parser.AddArgument("-n/--number-minutes", "Number of minutes to simulate at most", &num_minutes);
     Parser.AddArgument("-s/--size", "Specify size", &size, ArgParse::Argument::Optional);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
     Parser.AddArgument("-sv/--super-verbose", "Print Extra Verbose output", &super_verbose);
@@ -141,10 +143,21 @@ int main(int argc, char** argv) {
     }
 
     long minutes = 0;
-    bool repeats = false;
+    int total_repeats = 3;
     std::vector<int> prev_resource_values;
+    std::map<int,int> repeats;
     prev_resource_values.push_back(current_lumberyard->resource_value());
-    while(!repeats) {
+    while(minutes < num_minutes) {
+        // Quit here
+        int max_repeats = std::numeric_limits<int>::min();
+        ConstForEach(repeats, [&](const std::pair<int,int>& el) {
+                if(el.second > max_repeats) {
+                    max_repeats = el.second;
+                }
+        });
+        if(max_repeats == total_repeats) {
+            break;
+        }
         // Get next lumberyard
         for(int line_idx = 0; line_idx < size; ++line_idx) {
             for(int x_idx = 0; x_idx < size; ++x_idx) {
@@ -180,17 +193,12 @@ int main(int argc, char** argv) {
         // Check for repeating state
         int resource_value = current_lumberyard->resource_value();
         if(hasElement(prev_resource_values, resource_value)) {
-            repeats = true;
-        } else {
-            prev_resource_values.push_back(resource_value);
+            repeats[resource_value] += 1;
         }
+        prev_resource_values.push_back(resource_value);
         // Increment and display info.
         minutes += 1;
         current_lumberyard->print_ncurses(minutes);
-        //if(super_verbose) {
-        //    std::cout << "Minute " << minutes << std::endl;
-        //    current_lumberyard->print(std::cout);
-        //}
         // sleep after each round.
         usleep(1000000/60);
     }
@@ -200,15 +208,26 @@ int main(int argc, char** argv) {
 
     // Final reporting
     if(verbose) {
-        std::cout << "Final State:" << std::endl;
+        std::cout << "Final Simulated State:" << std::endl;
         current_lumberyard->print(std::cout);
     }
 
     std::cout << "Simulated " << minutes << " minutes" << std::endl;
-    if(repeats) {
-        std::cout << "Lumberyard repeats after " << minutes << " minutes." << std::endl;
+
+    if(repeats[*prev_resource_values.crbegin()] == total_repeats) {
+        auto prev_it = std::find(prev_resource_values.crbegin()+1,prev_resource_values.crend(), *prev_resource_values.crbegin());
+        auto period = std::distance(prev_resource_values.crbegin(), prev_it);
+        std::cout << "Period is: " << period << std::endl;
+        // Copy period values.
+        int pattern[period];
+        for(int idx = 0; idx < period; ++idx) {
+            pattern[idx] = prev_resource_values[prev_resource_values.size()-1-period+idx];
+        }
+        int period_start = prev_resource_values.size()-1;
+        std::cout << "Final Resource Value is: " << pattern[(num_minutes-period_start)%period] << std::endl;
+    } else {
+        std::cout << "Final Resource Value is: " << current_lumberyard->resource_value() << std::endl;
     }
-    std::cout << "Resource Value is: " << current_lumberyard->resource_value() << std::endl;
 
 	return 0;
 }
