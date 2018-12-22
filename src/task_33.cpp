@@ -272,7 +272,6 @@ int main(int argc, char** argv) {
     // Widen by one..
     x_min -= 1;
     x_max += 1;
-    y_min = 1;
 
     if(verbose) {
         std::cout << "Initial State" << std::endl;
@@ -443,6 +442,30 @@ int main(int argc, char** argv) {
             }
         }
     }
+    // Check that no water ranges overlap
+    for(auto it = Water.cbegin(); it != Water.cend(); ++it) {
+        for(auto it_2 = it+1; it_2 != Water.cend(); ++it_2) {
+            if(it->interferes(*it_2)) {
+                throw std::runtime_error("Water ranges interfere with each other!");
+            }
+        }
+    }
+    // Check that no WaterPassed is in clay.
+    for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
+        for(auto c_it = Clay.cbegin(); c_it != Clay.cend(); ++c_it) {
+            if(c_it->contains(*it)) {
+                throw std::runtime_error("Water got into clay!");
+            }
+        }
+    }
+    // Check that no Water is in clay
+    for(auto w_it = Water.cbegin(); w_it != Water.cend(); ++w_it) {
+        for(auto c_it = Clay.cbegin(); c_it != Clay.cend(); ++c_it) {
+            if(w_it->interferes(*c_it)) {
+                throw std::runtime_error("Water and Clay interfere!");
+            }
+        }
+    }
 
     if(verbose) {
         std::cout << "Current State" << std::endl;
@@ -458,6 +481,15 @@ int main(int argc, char** argv) {
     ConstForEach(Water, [&](const Range& rng) {
         Water_total += rng.size();
     });
-    std::cout << "There are a total of " << Water_total+WaterPassed.size() << " tiles the water can reach." << std::endl;
+    // So dumb.. Need to count from the minimum y value...
+    size_t water_passed_total = 0;
+    std::cout << "y_min: " << y_min << std::endl;
+    ConstForEach(WaterPassed, [&](const point& p) {
+            if(p.get_y() >= y_min) {
+                water_passed_total += 1;
+            }
+    });
+    std::cout << "There are a total of " << Water_total+water_passed_total << " tiles the water can reach." << std::endl;
+    std::cout << "Of which " << Water_total << " will remain" << std::endl;
     return 0;
 }
