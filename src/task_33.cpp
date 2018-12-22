@@ -287,21 +287,16 @@ int main(int argc, char** argv) {
 
     // Not sure what the stopping condition should be.
     for(auto it = WaterPassed.begin(); it != WaterPassed.end();) {
-        //std::cout << "Start Major Loop" << std::endl;
         char down_tile = get_tile(point(it->get_x(),it->get_y()+1), Clay, WaterPassed, Water);
         // Always extend down if empty.?
         if(down_tile == '.') {
-            //std::cout << "Start Major Condition 1" << std::endl;
             if(it->get_y()+1 <= y_max) {
                 // Only if we're not off the max.
                 WaterPassed.insert(it, point(it->get_x(),it->get_y()+1));
                 // We don't need to treat the iterator in any special way since we're always adding after.
             }
             ++it;
-            //std::cout << "End Major Condition 1" << std::endl;
         } else if((down_tile == '~')||(down_tile == '#')) {
-            //std::cout << "Start Major Condition 2" << std::endl;
-
             // We look left to right to see whether we should
             // Add a water line.
             point::p_idx y = it->get_y();
@@ -370,8 +365,6 @@ int main(int argc, char** argv) {
                                     ++p_it;
                                 }
                         }
-                        //std::cout << "Special state 2" << std::endl;
-                        //print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
                         break; // break from range loop
                     }
                 }
@@ -392,48 +385,25 @@ int main(int argc, char** argv) {
             } else {
                 // Add water passing. May not be a new thing.
                 bool added = false;
-                //std::cout << "Start, x_left: " << x_left << " x_right: " << x_right << " y: " << y << std::endl;
                 for(point::p_idx x_temp = x_left; x_temp <= x_right; ++x_temp) {
-                    //std::cout << "miniloop" << std::endl;
                     // Add if it doesn't exist already.
                     point p(x_temp,y);
                     if(!hasElement(WaterPassed, p)) {
-                        //std::cout << "Inserting" << std::endl;
                         added = true;
                         WaterPassed.insert(p);
-                        // Move it to the line before y.
-                        // distance locks up for me.. I don't know why...
-                        //auto distance = std::distance(it, temp_it);
-                        //std::cout << "distance: " << distance << std::endl;
-                        //if(distance <= 0) {
-                        //    std::advance(it, distance-1);
-                        //}
                     }
                 }
-                //std::cout << "Special state 3" << std::endl;
-                //print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
                 if(!added) {
-                    //std::cout << "Nothing added." << std::endl;
                     ++it;
                 } else {
-                    //std::cout << "Something added, moving it." << std::endl;
                     backup_one_line(y, it, WaterPassed);
-                    //std::cout << "Finished moving it." << std::endl;
                 }
-                //std::cout << "End Loop" << std::endl;
             }
-            //std::cout << "End Major Condition 2" << std::endl;
         } else {
-            //std::cout << "Start Major Condition 3" << std::endl;
-            //std::cout << "Advancing" << std::endl;
             ++it;
-            //std::cout << "End Advancing" << std::endl;
-            //std::cout << "End Major Condition 3" << std::endl;
         }
-        //std::cout << "End Major Loop" << std::endl;
     }
 
-    //std::cout << "Checking overlap" << std::endl;
     // Check that there is no overlap
     for(auto it = WaterPassed.cbegin(); it != WaterPassed.cend(); ++it) {
         for(auto it_2 = Water.cbegin(); it_2 != Water.cend(); ++it_2) {
