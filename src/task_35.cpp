@@ -141,6 +141,9 @@ int main(int argc, char** argv) {
             std::cout << "Minute " << minutes << std::endl;
             current_lumberyard->print(std::cout);
         }
+        if(minutes%10000==0) {
+            std::cout << "Minute " << minutes << " Simulated." << std::endl;
+        }
     }
 
     if(verbose) {
