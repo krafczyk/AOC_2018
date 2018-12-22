@@ -50,6 +50,13 @@ class point {
             answer.y = in.y;
             return answer;
         }
+        bool is_less_than(const point& rhs) const {
+            if(*this < rhs) {
+                return true;
+            } else {
+                return false;
+            }
+        }
         bool operator<(const point& rhs) const {
             if(this->y < rhs.y) {
                 return true;
@@ -186,6 +193,16 @@ void print_state(std::ostream& out, point::p_idx x_min, point::p_idx x_max, poin
     }
 }
 
+void backup_one_line(point::p_idx y, std::set<point>::iterator& it, std::set<point>& WaterPassed) {
+    point p(-50000,y-1); // p is to the left of any point in a row.
+    // Backup to the point just before p. This will be in the row above y-1.
+    while(!it->is_less_than(p) && it != WaterPassed.begin()) {
+        --it;
+    }
+    // Move up one.
+    ++it;
+}
+
 int main(int argc, char** argv) {
     // Parse Arguments
     std::string input_filepath;
@@ -276,11 +293,9 @@ int main(int argc, char** argv) {
         // Always extend down if empty.?
         if(down_tile == '.') {
             //std::cout << "Start Major Condition 1" << std::endl;
-            bool added = false;
             if(it->get_y()+1 <= y_max) {
                 // Only if we're not off the max.
                 WaterPassed.insert(it, point(it->get_x(),it->get_y()+1));
-                added = true;
                 // We don't need to treat the iterator in any special way since we're always adding after.
             }
             ++it;
@@ -342,17 +357,14 @@ int main(int argc, char** argv) {
                        (r_it->get_min().get_y() == y+1)) {
                         found_compatible = true;
                         r_it->mod_up(1);
-                        // Back it up one row.
-                        while(it->get_y() > y-1) {
-                            --it;
-                        }
+                        backup_one_line(y, it, WaterPassed);
                         // // Remove passing elements in this new expanded range.
                         for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
                                 if(r_it->contains(*p_it)) {
-                                    auto distance = std::distance(it, p_it);
-                                    if(distance <= 0) {
-                                        // Move the iterator in front of the deleted elements.
-                                        std::advance(it, distance-1);
+                                    // Move iterator to next level up.
+                                    auto temp_y = it->get_y();
+                                    while(it->get_y() >= temp_y) {
+                                        std::advance(it, -1);
                                     }
                                     p_it = WaterPassed.erase(p_it);
                                 } else {
@@ -371,11 +383,7 @@ int main(int argc, char** argv) {
                     // Remove passing elements in this new expanded range.
                     for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
                         if(rng.contains(*p_it)) {
-                            auto distance = std::distance(it, p_it);
-                            if(distance <= 0) {
-                                // Move the iterator in front of the deleted elements.
-                                std::advance(it, distance-1);
-                            }
+                            backup_one_line(it->get_y(), it, WaterPassed);
                             p_it = WaterPassed.erase(p_it);
                         } else {
                             ++p_it;
@@ -410,9 +418,7 @@ int main(int argc, char** argv) {
                     ++it;
                 } else {
                     //std::cout << "Something added, moving it." << std::endl;
-                    while(it->get_y() >= y) {
-                        std::advance(it, -1);
-                    }
+                    backup_one_line(y, it, WaterPassed);
                     //std::cout << "Finished moving it." << std::endl;
                 }
                 //std::cout << "End Loop" << std::endl;
