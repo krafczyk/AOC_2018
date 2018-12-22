@@ -271,17 +271,22 @@ int main(int argc, char** argv) {
 
     // Not sure what the stopping condition should be.
     for(auto it = WaterPassed.begin(); it != WaterPassed.end();) {
+        //std::cout << "Start Major Loop" << std::endl;
         char down_tile = get_tile(point(it->get_x(),it->get_y()+1), Clay, WaterPassed, Water);
         // Always extend down if empty.?
         if(down_tile == '.') {
+            //std::cout << "Start Major Condition 1" << std::endl;
+            bool added = false;
             if(it->get_y()+1 <= y_max) {
                 // Only if we're not off the max.
-                auto temp_it = WaterPassed.insert(it, point(it->get_x(),it->get_y()+1));
-                if(std::distance(it, temp_it) < 0) {
-                    std::swap(it,temp_it);
-                }
+                WaterPassed.insert(it, point(it->get_x(),it->get_y()+1));
+                added = true;
+                // We don't need to treat the iterator in any special way since we're always adding after.
             }
+            ++it;
+            //std::cout << "End Major Condition 1" << std::endl;
         } else if((down_tile == '~')||(down_tile == '#')) {
+            //std::cout << "Start Major Condition 2" << std::endl;
 
             // We look left to right to see whether we should
             // Add a water line.
@@ -344,17 +349,18 @@ int main(int argc, char** argv) {
                         // // Remove passing elements in this new expanded range.
                         for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
                                 if(r_it->contains(*p_it)) {
-                                    if(std::distance(it, p_it) <= 0) {
+                                    auto distance = std::distance(it, p_it);
+                                    if(distance <= 0) {
                                         // Move the iterator in front of the deleted elements.
-                                        std::advance(it, std::distance(it,p_it)-1);
+                                        std::advance(it, distance-1);
                                     }
                                     p_it = WaterPassed.erase(p_it);
                                 } else {
                                     ++p_it;
                                 }
                         }
-                        std::cout << "Special state 2" << std::endl;
-                        print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+                        //std::cout << "Special state 2" << std::endl;
+                        //print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
                         break; // break from range loop
                     }
                 }
@@ -365,9 +371,10 @@ int main(int argc, char** argv) {
                     // Remove passing elements in this new expanded range.
                     for(auto p_it = WaterPassed.begin(); p_it != WaterPassed.end();) {
                         if(rng.contains(*p_it)) {
-                            if(std::distance(it, p_it) <= 0) {
+                            auto distance = std::distance(it, p_it);
+                            if(distance <= 0) {
                                 // Move the iterator in front of the deleted elements.
-                                std::advance(it, std::distance(it,p_it)-1);
+                                std::advance(it, distance-1);
                             }
                             p_it = WaterPassed.erase(p_it);
                         } else {
@@ -377,27 +384,48 @@ int main(int argc, char** argv) {
                 }
             } else {
                 // Add water passing. May not be a new thing.
-                std::cout << "before: " << it->get_str() << std::endl;
+                bool added = false;
+                //std::cout << "Start, x_left: " << x_left << " x_right: " << x_right << " y: " << y << std::endl;
                 for(point::p_idx x_temp = x_left; x_temp <= x_right; ++x_temp) {
+                    //std::cout << "miniloop" << std::endl;
                     // Add if it doesn't exist already.
                     point p(x_temp,y);
                     if(!hasElement(WaterPassed, p)) {
-                        std::cout << "Inserting element" << std::endl;
-                        auto temp_it = WaterPassed.insert(it, p);
-                        std::cout << "done: " << temp_it->get_str() << std::endl;
-                        std::cout << "distance: " << std::distance(it, temp_it) << std::endl;
-                        std::cout << "done distance" << std::endl;
-                        if(std::distance(it, temp_it) <= 0) {
-                            std::advance(it, std::distance(it, temp_it)-1);
-                        }
+                        //std::cout << "Inserting" << std::endl;
+                        added = true;
+                        WaterPassed.insert(p);
+                        // Move it to the line before y.
+                        // distance locks up for me.. I don't know why...
+                        //auto distance = std::distance(it, temp_it);
+                        //std::cout << "distance: " << distance << std::endl;
+                        //if(distance <= 0) {
+                        //    std::advance(it, distance-1);
+                        //}
                     }
                 }
-                std::cout << "after: " << it->get_str() << std::endl;
-                throw std::runtime_error("early");
+                //std::cout << "Special state 3" << std::endl;
+                //print_state(std::cout, x_min, x_max, y_max, Clay, WaterPassed, Water);
+                if(!added) {
+                    //std::cout << "Nothing added." << std::endl;
+                    ++it;
+                } else {
+                    //std::cout << "Something added, moving it." << std::endl;
+                    while(it->get_y() >= y) {
+                        std::advance(it, -1);
+                    }
+                    //std::cout << "Finished moving it." << std::endl;
+                }
+                //std::cout << "End Loop" << std::endl;
             }
+            //std::cout << "End Major Condition 2" << std::endl;
         } else {
+            //std::cout << "Start Major Condition 3" << std::endl;
+            //std::cout << "Advancing" << std::endl;
             ++it;
+            //std::cout << "End Advancing" << std::endl;
+            //std::cout << "End Major Condition 3" << std::endl;
         }
+        //std::cout << "End Major Loop" << std::endl;
     }
 
     //std::cout << "Checking overlap" << std::endl;
