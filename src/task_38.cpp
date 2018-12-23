@@ -63,7 +63,7 @@ class Registers {
 		Reg_t values[num_registers];
 };
 
-typedef int Inst_t;
+typedef long Inst_t;
 
 void addr(Inst_t A, Inst_t B, Inst_t C, Registers& in) {
 	in.assign(C) = in(A)+in(B);
@@ -189,10 +189,11 @@ struct instruction {
     int C;
 };
 
-int run_program(int ip, Registers& reg, std::vector<instruction> program, bool inspect = false) {
+int run_program(int ip, Registers& reg, std::vector<instruction> program, bool inspect = false, long num_inst = 0) {
     std::vector<instruction> instruction_history;
     std::map<instruction,int> repetitions;
-    while(reg(ip) < (Inst_t) program.size()) {
+    long inst_num = 0;
+    while((reg(ip) < (Inst_t) program.size())&&((num_inst == 0)||(inst_num < num_inst))) {
         // Fetch instruction:
         instruction& the_inst = program[reg(ip)];
         // Execute the instruction
@@ -205,6 +206,7 @@ int run_program(int ip, Registers& reg, std::vector<instruction> program, bool i
         }
         // Increment instruction pointer
         reg.assign(ip) = reg(ip)+1;
+        ++inst_num;
     }
     return reg(0);
 }
@@ -213,8 +215,10 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+    long num_inst = 0;
 	ArgParse::ArgParser Parser("Task 37");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+    Parser.AddArgument("-n/--num-inst", "Number of instructions to execute", &num_inst, ArgParse::Argument::Optional);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -257,16 +261,18 @@ int main(int argc, char** argv) {
     // Create registers.
     Registers reg;
 
-    //reg.assign(0) = 1;
+    reg.assign(0) = 1;
     //std::cout << "Result from program 2: " << run_program(ip, reg, program, true) << std::endl;
 
     // Cut to the chase..
-    reg.assign(0) = 0;
-    reg.assign(1) = 10551277;
-    reg.assign(2) = 10551277;
-    reg.assign(3) = 1;
-    reg.assign(4) = 10551277;
-    reg.assign(5) = 4;
-    std::cout << "Cutting to the chase: result from program 2: " << run_program(ip, reg, program, true) << std::endl;
+    //[21102553, 39537, 10551277, 10551277, 0, 5, ]
+    //reg.assign(0) = 21102553;
+    //reg.assign(1) = 10551277;
+    //reg.assign(2) = 10551277;
+    //reg.assign(3) = 10551277;
+    //reg.assign(4) = 0;
+    //reg.assign(5) = 5;
+    auto result = run_program(ip, reg, program, true, num_inst);
+    std::cout << "Cutting to the chase: result from program 2: " << result << std::endl;
 	return 0;
 }
