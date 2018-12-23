@@ -189,12 +189,20 @@ struct instruction {
     int C;
 };
 
-int run_program(int ip, Registers& reg, std::vector<instruction> program) {
+int run_program(int ip, Registers& reg, std::vector<instruction> program, bool inspect = false) {
+    std::vector<instruction> instruction_history;
+    std::map<instruction,int> repetitions;
     while(reg(ip) < (Inst_t) program.size()) {
         // Fetch instruction:
         instruction& the_inst = program[reg(ip)];
         // Execute the instruction
+        if(inspect) {
+        std::cout << "ip=" << reg(ip) << " " << reg.get_str() << " " << the_inst.name << ' ' << the_inst.A << ' ' << the_inst.B << ' ' << the_inst.C << " ";
+        }
         instructions[the_inst.name](the_inst.A, the_inst.B, the_inst.C, reg);
+        if(inspect) {
+        std::cout << " " << reg.get_str() << std::endl;
+        }
         // Increment instruction pointer
         reg.assign(ip) = reg(ip)+1;
     }
@@ -246,10 +254,19 @@ int main(int argc, char** argv) {
         program.push_back(new_instruction);
     }
 
-    std::cout << "Program 1" << std::endl;
     // Create registers.
     Registers reg;
 
-    std::cout << "Result from program 1: " << run_program(ip, reg, program) << std::endl;
+    //reg.assign(0) = 1;
+    //std::cout << "Result from program 2: " << run_program(ip, reg, program, true) << std::endl;
+
+    // Cut to the chase..
+    reg.assign(0) = 0;
+    reg.assign(1) = 10551277;
+    reg.assign(2) = 10551277;
+    reg.assign(3) = 1;
+    reg.assign(4) = 10551277;
+    reg.assign(5) = 4;
+    std::cout << "Cutting to the chase: result from program 2: " << run_program(ip, reg, program, true) << std::endl;
 	return 0;
 }
