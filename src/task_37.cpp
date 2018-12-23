@@ -182,6 +182,25 @@ void get_instruction(std::string in, Inst_t instruction[4]) {
 	}
 }
 
+struct instruction {
+    std::string name;
+    int A;
+    int B;
+    int C;
+};
+
+int run_program(int ip, Registers& reg, std::vector<instruction> program) {
+    while(reg(ip) < (Inst_t) program.size()) {
+        // Fetch instruction:
+        instruction& the_inst = program[reg(ip)];
+        // Execute the instruction
+        instructions[the_inst.name](the_inst.A, the_inst.B, the_inst.C, reg);
+        // Increment instruction pointer
+        reg.assign(ip) = reg(ip)+1;
+    }
+    return reg(0);
+}
+
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
@@ -215,13 +234,6 @@ int main(int argc, char** argv) {
 
     std::cout << "IP: " << ip << std::endl;
 
-    struct instruction {
-        std::string name;
-        int A;
-        int B;
-        int C;
-    };
-
     std::vector<instruction> program;
     while(std::getline(infile, line)) {
         std::smatch line_result;
@@ -234,22 +246,15 @@ int main(int argc, char** argv) {
         program.push_back(new_instruction);
     }
 
+    std::cout << "Program 1" << std::endl;
     // Create registers.
     Registers reg;
 
-    while(reg(ip) < (Inst_t) program.size()) {
-        // Fetch instruction:
-        instruction& the_inst = program[reg(ip)];
-        //std::cout << "ip=" << reg(ip) << " " << reg.get_str() << " ";
-        // Execute the instruction
-        //std::cout << the_inst.name << " " << the_inst.A << " " << the_inst.B << " " << the_inst.C << " ";
-        instructions[the_inst.name](the_inst.A, the_inst.B, the_inst.C, reg);
-        //std::cout << reg.get_str() << std::endl;
-        // Increment instruction pointer
-        reg.assign(ip) = reg(ip)+1;
-    }
+    std::cout << "Result from program 1: " << run_program(ip, reg, program) << std::endl;
 
-    std::cout << "register 0: " << reg(0) << std::endl;
-
+    std::cout << "Program 2" << std::endl;
+    Registers reg2;
+    reg2.assign(0) = 1;
+    std::cout << "Result from program 2: " << run_program(ip, reg2, program) << std::endl;
 	return 0;
 }
