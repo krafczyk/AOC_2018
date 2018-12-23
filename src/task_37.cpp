@@ -251,10 +251,5 @@ int main(int argc, char** argv) {
     Registers reg;
 
     std::cout << "Result from program 1: " << run_program(ip, reg, program) << std::endl;
-
-    std::cout << "Program 2" << std::endl;
-    Registers reg2;
-    reg2.assign(0) = 1;
-    std::cout << "Result from program 2: " << run_program(ip, reg2, program) << std::endl;
 	return 0;
 }
