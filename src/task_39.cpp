@@ -148,8 +148,10 @@ int main(int argc, char** argv) {
         std::cout << path << std::endl;
     });
 
-    std::vector<std::vector<char>> answer_map;
     if(test_value_given) {
+        array_2d<char> answer_map;
+        std::vector<std::vector<char>> temp_answer_map;
+
         // Read in resulting map
         std::getline(infile, line);
 
@@ -158,16 +160,18 @@ int main(int argc, char** argv) {
             for(size_t idx = 0; idx < line.size(); ++idx) {
                 char_line.push_back(line[idx]);
             }
-            answer_map.push_back(char_line);
+            temp_answer_map.push_back(char_line);
         }
+        answer_map.init(temp_answer_map[0].size(), temp_answer_map.size());
+        for(size_t j = 0; j < temp_answer_map.size(); ++j) {
+            for(size_t i = 0; i < temp_answer_map[i].size(); ++i) {
+                answer_map.assign(i,j) = temp_answer_map[j][i];
+            }
+        }
+
         if(verbose) {
             std::cout << "Expected map: " << std::endl;
-            ConstForEach(answer_map, [](const std::vector<char>& char_line) {
-                    ConstForEach(char_line, [](char c) {
-                            std::cout << c;
-                    });
-                    std::cout << std::endl;
-            });
+            answer_map.print(std::cout);
         }
     }
 
