@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <ostream>
 
 //template<typename T>
 //concept Iterable 
@@ -79,3 +80,49 @@ template<typename C, typename F>
 void removeIf(C& container, F functor) {
     std::remove_if(container.begin(), container.end(), functor);
 }
+
+template<typename T>
+class array_2d {
+    public:
+        array_2d(size_t nx=0, size_t ny=0) {
+            this->nx = nx;
+            this->ny = ny;
+            initialize_internal();
+        }
+        ~array_2d() {
+            if(array != nullptr) {
+                delete [] array;
+            }
+        }
+        void init(size_t nx, size_t ny) {
+            this->nx = nx;
+            this->ny = ny;
+            initialize_internal();
+        }
+        T& assign(size_t i, size_t j) {
+            return this->array[j*nx+i];
+        }
+        T operator()(size_t i, size_t j) const {
+            return this->array[j*nx+i];
+        }
+        void print(std::ostream& out) const {
+            for(size_t j = 0; j < ny; ++j) {
+                for(size_t i = 0; i < nx; ++i) {
+                    out << (*this)(i,j);
+                }
+                out << std::endl;
+            }
+        }
+    private:
+        size_t nx;
+        size_t ny;
+        T* array;
+
+        void initialize_internal() {
+            if((this->nx == 0)||(this->ny == 0)) {
+                array = nullptr;
+            } else {
+                array = new T[nx*ny];
+            }
+        }
+};
