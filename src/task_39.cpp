@@ -143,10 +143,58 @@ int main(int argc, char** argv) {
         std::cout << "Passed Regex: " << regex_line << std::endl;
     }
 
-    std::cout << "expanded paths are:" << std::endl;
-    ConstForEach(expand_regex(regex_line), [](const std::string& path) {
-        std::cout << path << std::endl;
-    });
+    // Expand the regex out.
+    std::vector<std::string> unique_paths = expand_regex(regex_line);
+
+    if(verbose) {
+        std::cout << "Expanded regexs: " << std::endl;
+        ConstForEach(unique_paths, [](const std::string& in) {
+            std::cout << in << std::endl;
+        });
+    }
+
+    // Get room extents
+    int x_min = 0;
+    int x_max = 0;
+    int y_min = 0;
+    int y_max = 0;
+
+    for(size_t idx = 0; idx < unique_paths.size(); ++idx) {
+        int x = 0;
+        int y = 0;
+        for(size_t c_idx = 0; c_idx < unique_paths[idx].size(); ++c_idx) {
+            char the_char = unique_paths[idx][c_idx];
+            // Move
+            if(the_char == 'E') {
+                x += 1;
+            } else if (the_char == 'W') {
+                x -= 1;
+            } else if (the_char == 'N') {
+                y += 1;
+            } else if (the_char == 'S') {
+                y -= 1;
+            } else {
+                throw std::runtime_error("Unknown character!");
+            }
+            // Update limits
+            if(x < x_min) {
+                x_min = x;
+            }
+            if(x > x_max) {
+                x_max = x;
+            }
+            if(y < y_min) {
+                y_min = y;
+            }
+            if(y > y_max) {
+                y_max = y;
+            }
+        }
+    }
+
+    if(verbose) {
+        std::cout << "Detected extents: x:[" << x_min << ", " << x_max << "] y:[" << y_min << ", " << y_max << "]" << std::endl;
+    }
 
     if(test_value_given) {
         array_2d<char> answer_map;
