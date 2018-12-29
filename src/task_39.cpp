@@ -37,64 +37,40 @@ void remove_duplicates(std::vector<std::string>& in) {
 
 // The result of this function is a vector with all options expanded.
 std::vector<std::string> expand_regex(std::string& regex_line, const int stack_level = 0) {
-    //std::cout << "expand_regex (" << stack_level << "): " << regex_line << std::endl;
-    //std::cout << "expand_regex: " << regex_line.size() << std::endl;
     std::vector<std::string> resulting_paths;
     std::vector<std::string> options;
     options.push_back(""); // initial empty string.
-    int loop_it = 0;
-    while((regex_line.size() != 0)&&(loop_it < 8)) {
-        //std::cout << "main loop" << std::endl;
+    while(regex_line.size() != 0) {
         if((regex_line[0] == '^')||(regex_line[0] == '$')) {
-            //std::cout << "branch 1" << std::endl;
             regex_line.erase(0,1);
         } else if(regex_line[0] == '(') {
-            //std::cout << "branch 2" << std::endl;
             regex_line.erase(0,1);
             combine(resulting_paths, options); // save current options.
             options.clear(); // clear current options.
-            int loop_it_2 = 0;
-            bool was_pipe = false;
-            do {
-                was_pipe = false;
-                //std::cout << "miniloop" << std::endl;
-                // Expand the current regex.
-                //std::cout << "before expand: " << regex_line << std::endl;
-                std::vector<std::string> sub_options = expand_regex(regex_line, stack_level +1);
-                //std::cout << "after expand: " << regex_line << std::endl;
-                //std::cout << "received sub_options length: " << sub_options.size() << std::endl;
-                //ConstForEach(sub_options, [&](const std::string& in) {
-                //        std::cout << "[" << in << "]" << std::endl;
-                //});
-                // Add to options
-                options.insert(options.end(), sub_options.begin(), sub_options.end());
-                if(regex_line[0] == '|') {
-                    // Erase character.
-                    regex_line.erase(0,1);
-                    was_pipe = true;
-                }
-                //std::cout << "Character: " << regex_line[0] << std::endl;
-                loop_it_2 += 1;
-                if(loop_it_2 > 8) {
-                    break;
-                }
-                //std::cout << "miniloop end" << std::endl;
-            } while((regex_line[0] != ')')||(was_pipe));
-            // Eat closing parentheses
+            options = expand_regex(regex_line, stack_level+1);
+            if(regex_line[0] != ')') {
+                throw std::runtime_error("Didn't get expected end parens");
+            }
+            // consume end parens
             regex_line.erase(0,1);
-            break;
-        } else if((regex_line[0] == '|')||(regex_line[0] == ')')) {
-            //std::cout << "branch 3" << std::endl;
-            break;
-            // If we didn't see a ')' first, then we should simply return.
+            combine(resulting_paths, options); // save current options.
+            options.clear(); // clear current options.
+            options.push_back(""); // Add new empty option.
+        } else if(regex_line[0] == '|') {
+            // Add new option
+            options.push_back("");
+            regex_line.erase(0,1);
+        } else if(regex_line[0] == ')') {
+            combine(resulting_paths, options); // save current options.
+            options.clear(); // clear current options.
+            // Add new empty option
+            options.push_back("");
+            break; // break here. the superior call will finish
         } else {
-            //std::cout << "branch 4" << std::endl;
-            options[0].push_back(regex_line[0]);
+            options[options.size()-1].push_back(regex_line[0]); // Add to the last option.
             regex_line.erase(0,1);
         }
-        loop_it += 1;
     }
-    //std::cout << "Ending expand_regex call." << std::endl;
     combine(resulting_paths, options);
     remove_duplicates(resulting_paths);
     return resulting_paths;
