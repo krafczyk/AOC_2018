@@ -9,6 +9,8 @@
 #include "ArgParseStandalone.h"
 #include "utilities.h"
 
+typedef int p_idx;
+
 void combine(std::vector<std::string>& A, std::vector<std::string>& B) {
     if(A.size() == 0) {
         std::swap(A, B);
@@ -172,6 +174,140 @@ int main(int argc, char** argv) {
         std::cout << "Detected extents: x:[" << x_min << ", " << x_max << "] y:[" << y_min << ", " << y_max << "]" << std::endl;
     }
 
+    // Build map
+    p_idx n_rooms_x = x_max-x_min+1;
+    p_idx n_rooms_y = y_max-y_min+1;
+    array_2d<char> the_map(2*n_rooms_x+1,2*n_rooms_y+1);
+    auto x_to_idx = [&](p_idx x) {
+        return x-x_min;
+    };
+    auto y_to_idx = [&](p_idx y) {
+        return y-y_min;
+    };
+    /*
+    auto idx_to_x = [&](p_idx idx) {
+        return idx+x_min;
+    };
+    auto idx_to_y = [&](p_idx idx) {
+        return idx+y_min;
+    };
+    */
+
+    // Initialize map.
+    for(p_idx x_idx = 0; x_idx < 2*n_rooms_x+1; x_idx += 1) {
+        for(p_idx y_idx = 0; y_idx < 2*n_rooms_y+1; y_idx += 1) {
+            if((x_idx%2 == 0)&&(y_idx%2 == 0)) {
+                the_map.assign(x_idx,y_idx) = '#';
+            } else {
+                the_map.assign(x_idx,y_idx) = '?';
+            }
+        }
+    }
+    // Assign initial room
+    the_map.assign(1+2*x_to_idx(0),1+2*y_to_idx(0)) = '.';
+
+    // Traverse map with paths
+    for(size_t path_idx = 0; path_idx < unique_paths.size(); ++path_idx) {
+        std::string& path = unique_paths[path_idx];
+        p_idx room_x = 0;
+        p_idx room_y = 0;
+        for(size_t idx = 0; idx < path.size(); ++idx) {
+            char the_char = path[idx];
+            switch(the_char) {
+                case ('N'): {
+                    p_idx x_idx = 1+2*x_to_idx(room_x);
+                    p_idx y_idx = 1+2*y_to_idx(room_y);
+                    p_idx y_idx_next = 1+2*y_to_idx(room_y-1);
+                    p_idx y_idx_door = y_idx-1;
+                    char door_char = the_map(x_idx,y_idx_door);
+                    char next_room_char = the_map(x_idx,y_idx_next);
+                    if((next_room_char != '.')&&(next_room_char != '?')) {
+                        throw std::runtime_error("Unexpected room character!");
+                    }
+                    if((door_char != '-')&&(door_char != '?')) {
+                        throw std::runtime_error("Unexpected door character!");
+                    }
+                    the_map.assign(x_idx, y_idx_door) = '-';
+                    the_map.assign(x_idx, y_idx_next) = '.';
+                    room_y -= 1;
+                    break;
+                }
+                case ('S'): {
+                    p_idx x_idx = 1+2*x_to_idx(room_x);
+                    p_idx y_idx = 1+2*y_to_idx(room_y);
+                    p_idx y_idx_next = 1+2*y_to_idx(room_y+1);
+                    p_idx y_idx_door = y_idx+1;
+                    char door_char = the_map(x_idx,y_idx_door);
+                    char next_room_char = the_map(x_idx,y_idx_next);
+                    if((next_room_char != '.')&&(next_room_char != '?')) {
+                        throw std::runtime_error("Unexpected room character!");
+                    }
+                    if((door_char != '-')&&(door_char != '?')) {
+                        throw std::runtime_error("Unexpected door character!");
+                    }
+                    the_map.assign(x_idx, y_idx_door) = '-';
+                    the_map.assign(x_idx, y_idx_next) = '.';
+                    room_y += 1;
+                    break;
+                }
+                case('E'): {
+                    p_idx y_idx = 1+2*y_to_idx(room_y);
+                    p_idx x_idx = 1+2*x_to_idx(room_x);
+                    p_idx x_idx_next = 1+2*y_to_idx(room_x+1);
+                    p_idx x_idx_door = x_idx+1;
+                    char door_char = the_map(x_idx_door,y_idx);
+                    char next_room_char = the_map(x_idx_next,y_idx);
+                    if((next_room_char != '.')&&(next_room_char != '?')) {
+                        throw std::runtime_error("Unexpected room character!");
+                    }
+                    if((door_char != '|')&&(door_char != '?')) {
+                        throw std::runtime_error("Unexpected door character!");
+                    }
+                    the_map.assign(x_idx_door, y_idx) = '|';
+                    the_map.assign(x_idx_next, y_idx) = '.';
+                    room_x += 1;
+                    break;
+                }
+                case('W'): {
+                    p_idx y_idx = 1+2*y_to_idx(room_y);
+                    p_idx x_idx = 1+2*x_to_idx(room_x);
+                    p_idx x_idx_next = 1+2*y_to_idx(room_x-1);
+                    p_idx x_idx_door = x_idx-1;
+                    char door_char = the_map(x_idx_door,y_idx);
+                    char next_room_char = the_map(x_idx_next,y_idx);
+                    if((next_room_char != '.')&&(next_room_char != '?')) {
+                        throw std::runtime_error("Unexpected room character!");
+                    }
+                    if((door_char != '|')&&(door_char != '?')) {
+                        throw std::runtime_error("Unexpected door character!");
+                    }
+                    the_map.assign(x_idx_door, y_idx) = '|';
+                    the_map.assign(x_idx_next, y_idx) = '.';
+                    room_x -= 1;
+                    break;
+                }
+                default: {
+                    std::runtime_error("Unexpected path character!");
+                }
+            }
+        }
+    }
+
+    // Set all remaining '?' as '#'.
+    for(p_idx x_idx = 0; x_idx < 1+2*n_rooms_x; ++x_idx) {
+        for(p_idx y_idx = 0; y_idx < 1+2*n_rooms_y; ++y_idx) {
+            if (the_map(x_idx,y_idx) == '?') {
+                the_map.assign(x_idx,y_idx) = '#';
+            }
+        }
+    }
+
+    if(verbose) {
+        std::cout << "After path processing:" << std::endl;
+        the_map.print(std::cout);
+    }
+
+
     if(test_value_given) {
         array_2d<char> answer_map;
         std::vector<std::vector<char>> temp_answer_map;
@@ -196,6 +332,27 @@ int main(int argc, char** argv) {
         if(verbose) {
             std::cout << "Expected map: " << std::endl;
             answer_map.print(std::cout);
+        }
+
+        // Test that developed map is the same as expected.
+        bool match = true;
+        for(p_idx x_idx = 0; x_idx < 1+2*n_rooms_x; ++x_idx) {
+            for(p_idx y_idx = 0; y_idx < 1+2*n_rooms_y; ++y_idx) {
+                char map_char = the_map(x_idx,y_idx);
+                char expected_char = answer_map(x_idx,y_idx);
+                if((x_idx == 1+2*x_to_idx(0))&&(y_idx == 1+2*y_to_idx(0))) {
+                    map_char = 'X';
+                }
+                if(map_char != expected_char) {
+                    match = false;
+                    break;
+                }
+            }
+        }
+        if(!match) {
+            std::cout << "Map wasn't a match.." << std::endl;
+        } else {
+            std::cout << "Map matched!" << std::endl;
         }
     }
 
