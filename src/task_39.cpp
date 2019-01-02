@@ -11,18 +11,19 @@
 
 typedef int p_idx;
 
-void combine(std::vector<std::string>& A, std::vector<std::string>& B) {
-    if(A.size() == 0) {
-        std::swap(A, B);
-    } else {
-        std::vector<std::string> new_paths;
-        for(size_t p_idx = 0; p_idx < A.size(); ++p_idx) {
-            for(size_t o_idx=0; o_idx < B.size(); ++o_idx) {
-                new_paths.push_back(A[p_idx]+B[o_idx]);
+std::vector<std::string> combine(const std::vector<std::vector<std::string>>& list) {
+    std::vector<std::string> results;
+    for(auto list_it = list.cbegin(); list_it != list.cend(); ++list_it) {
+        std::vector<std::string> new_results;
+        for(size_t o_idx = 0; o_idx < results.size(); ++o_idx) {
+            for(size_t l_idx = 0; l_idx < list_it->size(); ++l_idx) {
+                // Concatenate.
+                new_results.push_back(results[o_idx]+(*list_it)[l_idx]);
             }
         }
-        std::swap(A, new_paths);
+        std::swap(results, new_results);
     }
+    return results;
 }
 
 void remove_duplicates(std::vector<std::string>& in) {
@@ -40,63 +41,57 @@ void remove_duplicates(std::vector<std::string>& in) {
 // The result of this function is a vector with all options expanded.
 std::vector<std::string> expand_regex(std::string& regex_line, const int stack_level = 0) {
     std::cout << "expand_regex: (" << regex_line << ") (" << stack_level << ")" << std::endl;
-    std::vector<std::string> resulting_paths;
-    std::vector<std::string> options;
-    bool pipe_encountered = false;
-    options.push_back(""); // initial empty string.
+    // Record all options
+    std::vector<std::vector<std::vector<std::string>>> options;
+    options.push_back(std::vector<std::vector<std::string>>()); // initial empty vector.
+    options.rbegin()->push_back(std::vector<std::string>());
+    options.rbegin()->rbegin()->push_back("");
     while(regex_line.size() != 0) {
-        std::cout << "Start Main Loop" << std::endl;
-        std::cout << "resulting_paths:" << std::endl;
-        ConstForEach(resulting_paths, [](const std::string& in) {
-            std::cout << in << std::endl;
-        });
-        std::cout << "options:" << std::endl;
-        ConstForEach(options, [](const std::string& in) {
-            std::cout << in << std::endl;
-        });
+        std::cout << "Main loop" << std::endl;
         if((regex_line[0] == '^')||(regex_line[0] == '$')) {
+            std::cout << "branch 1" << std::endl;
+            // Skip these characters
             regex_line.erase(0,1);
         } else if(regex_line[0] == '(') {
+            std::cout << "branch 2" << std::endl;
             regex_line.erase(0,1);
-            combine(resulting_paths, options); // save current options.
-            options.clear(); // clear current options.
-            options = expand_regex(regex_line, stack_level+1);
+            options.rbegin()->push_back(expand_regex(regex_line, stack_level+1));
             if(regex_line[0] != ')') {
                 throw std::runtime_error("Didn't get expected end parens");
             }
             // consume end parens
             regex_line.erase(0,1);
-            combine(resulting_paths, options); // save current options.
-            options.clear(); // clear current options.
-            options.push_back(""); // Add new empty option.
+            // Add new empty option.
+            options.rbegin()->push_back(std::vector<std::string>());
+            options.rbegin()->rbegin()->push_back("");
         } else if(regex_line[0] == '|') {
-            // Add new option
-            options.push_back("");
+            std::cout << "branch 3" << std::endl;
+            // Start new option section
+            options.push_back(std::vector<std::vector<std::string>>());
+            options.rbegin()->rbegin()->push_back("");
             regex_line.erase(0,1);
-            pipe_encountered = true;
         } else if(regex_line[0] == ')') {
-            combine(resulting_paths, options); // save current options.
-            options.clear(); // clear current options.
-            // Add new empty option
-            options.push_back("");
+            std::cout << "branch 4" << std::endl;
             break; // break here. the superior call will finish
         } else {
-            options[options.size()-1].push_back(regex_line[0]); // Add to the last option.
+            std::cout << "branch 5" << std::endl;
+            // Add these characters to the last group of the last option set.
+            options.rbegin()->rbegin()->rbegin()->push_back(regex_line[0]); // Add to the last option.
             regex_line.erase(0,1);
         }
-        std::cout << "End Main Loop" << std::endl;
-        std::cout << "resulting_paths:" << std::endl;
-        ConstForEach(resulting_paths, [](const std::string& in) {
-            std::cout << in << std::endl;
-        });
-        std::cout << "options:" << std::endl;
-        ConstForEach(options, [](const std::string& in) {
-            std::cout << in << std::endl;
-        });
     }
-    combine(resulting_paths, options);
-    remove_duplicates(resulting_paths);
-    return resulting_paths;
+    // Container for results
+    std::vector<std::string> resulting_options;
+    while(options.size() != 0) {
+        // perform multiplexing of strings
+        std::vector<std::string> option_list = combine(options[0]);
+        // Add to resulting options.
+        resulting_options.insert(resulting_options.end(), option_list.begin(), option_list.end());
+        // Remove the element from options
+        options.erase(options.begin());
+    }
+    remove_duplicates(resulting_options);
+    return resulting_options;
 }
 
 int main(int argc, char** argv) {
