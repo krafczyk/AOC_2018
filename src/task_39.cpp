@@ -39,10 +39,21 @@ void remove_duplicates(std::vector<std::string>& in) {
 
 // The result of this function is a vector with all options expanded.
 std::vector<std::string> expand_regex(std::string& regex_line, const int stack_level = 0) {
+    std::cout << "expand_regex: (" << regex_line << ") (" << stack_level << ")" << std::endl;
     std::vector<std::string> resulting_paths;
     std::vector<std::string> options;
+    bool pipe_encountered = false;
     options.push_back(""); // initial empty string.
     while(regex_line.size() != 0) {
+        std::cout << "Start Main Loop" << std::endl;
+        std::cout << "resulting_paths:" << std::endl;
+        ConstForEach(resulting_paths, [](const std::string& in) {
+            std::cout << in << std::endl;
+        });
+        std::cout << "options:" << std::endl;
+        ConstForEach(options, [](const std::string& in) {
+            std::cout << in << std::endl;
+        });
         if((regex_line[0] == '^')||(regex_line[0] == '$')) {
             regex_line.erase(0,1);
         } else if(regex_line[0] == '(') {
@@ -62,6 +73,7 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
             // Add new option
             options.push_back("");
             regex_line.erase(0,1);
+            pipe_encountered = true;
         } else if(regex_line[0] == ')') {
             combine(resulting_paths, options); // save current options.
             options.clear(); // clear current options.
@@ -72,6 +84,15 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
             options[options.size()-1].push_back(regex_line[0]); // Add to the last option.
             regex_line.erase(0,1);
         }
+        std::cout << "End Main Loop" << std::endl;
+        std::cout << "resulting_paths:" << std::endl;
+        ConstForEach(resulting_paths, [](const std::string& in) {
+            std::cout << in << std::endl;
+        });
+        std::cout << "options:" << std::endl;
+        ConstForEach(options, [](const std::string& in) {
+            std::cout << in << std::endl;
+        });
     }
     combine(resulting_paths, options);
     remove_duplicates(resulting_paths);
@@ -148,9 +169,9 @@ int main(int argc, char** argv) {
             } else if (the_char == 'W') {
                 x -= 1;
             } else if (the_char == 'N') {
-                y += 1;
-            } else if (the_char == 'S') {
                 y -= 1;
+            } else if (the_char == 'S') {
+                y += 1;
             } else {
                 throw std::runtime_error("Unknown character!");
             }
@@ -206,6 +227,11 @@ int main(int argc, char** argv) {
     // Assign initial room
     the_map.assign(1+2*x_to_idx(0),1+2*y_to_idx(0)) = '.';
 
+    if(verbose) {
+        std::cout << "Initial Map" << std::endl;
+        the_map.print(std::cout);
+    }
+
     // Traverse map with paths
     for(size_t path_idx = 0; path_idx < unique_paths.size(); ++path_idx) {
         std::string& path = unique_paths[path_idx];
@@ -213,6 +239,7 @@ int main(int argc, char** argv) {
         p_idx room_y = 0;
         for(size_t idx = 0; idx < path.size(); ++idx) {
             char the_char = path[idx];
+            std::cout << "The char: " << the_char << std::endl;
             switch(the_char) {
                 case ('N'): {
                     p_idx x_idx = 1+2*x_to_idx(room_x);
@@ -222,6 +249,7 @@ int main(int argc, char** argv) {
                     char door_char = the_map(x_idx,y_idx_door);
                     char next_room_char = the_map(x_idx,y_idx_next);
                     if((next_room_char != '.')&&(next_room_char != '?')) {
+                        std::cout << next_room_char << std::endl;
                         throw std::runtime_error("Unexpected room character!");
                     }
                     if((door_char != '-')&&(door_char != '?')) {
@@ -240,6 +268,7 @@ int main(int argc, char** argv) {
                     char door_char = the_map(x_idx,y_idx_door);
                     char next_room_char = the_map(x_idx,y_idx_next);
                     if((next_room_char != '.')&&(next_room_char != '?')) {
+                        std::cout << next_room_char << std::endl;
                         throw std::runtime_error("Unexpected room character!");
                     }
                     if((door_char != '-')&&(door_char != '?')) {
@@ -258,6 +287,7 @@ int main(int argc, char** argv) {
                     char door_char = the_map(x_idx_door,y_idx);
                     char next_room_char = the_map(x_idx_next,y_idx);
                     if((next_room_char != '.')&&(next_room_char != '?')) {
+                        std::cout << next_room_char << std::endl;
                         throw std::runtime_error("Unexpected room character!");
                     }
                     if((door_char != '|')&&(door_char != '?')) {
@@ -276,6 +306,7 @@ int main(int argc, char** argv) {
                     char door_char = the_map(x_idx_door,y_idx);
                     char next_room_char = the_map(x_idx_next,y_idx);
                     if((next_room_char != '.')&&(next_room_char != '?')) {
+                        std::cout << next_room_char << std::endl;
                         throw std::runtime_error("Unexpected room character!");
                     }
                     if((door_char != '|')&&(door_char != '?')) {
@@ -307,6 +338,81 @@ int main(int argc, char** argv) {
         the_map.print(std::cout);
     }
 
+    // Calculate distance to each room from starting node.
+    typedef std::pair<p_idx,p_idx> point;    
+    typedef std::pair<point,p_idx> cost_pair;
+    std::map<point,p_idx> distances; // map to store shortest distances
+    std::vector<cost_pair> openSet;
+    openSet.push_back(cost_pair(point(0,0),0));
+    while(openSet.size() != 0) {
+        p_idx dist = openSet[0].second;
+        point room = openSet[0].first;
+        // Remove from open set.
+        openSet.erase(openSet.begin());
+        auto find_it = std::find_if(distances.cbegin(),distances.cend(), [&](const cost_pair& in) {
+            if(in.first == room) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        if(find_it == distances.cend()) {
+            // haven't encountered the room yet.
+            distances[room] = dist;
+        } else {
+            if(dist < distances[room]) {
+                distances[room] = dist;
+            }
+        }
+        // Add adjacent rooms if they haven't already been encountered or have higher scores.
+        auto process_next_room = [&](const point& next_room) {
+            auto find_it = std::find_if(distances.cbegin(),distances.cend(), [&](const cost_pair& in) {
+                if(in.first == next_room) {
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+            if(find_it == distances.cend()) {
+                openSet.push_back(cost_pair(next_room, dist+1));
+            } else {
+                if(dist+1 < find_it->second) {
+                    // Add the room if its better than the previous
+                    openSet.push_back(cost_pair(next_room, dist+1));
+                }
+            }
+        };
+        // North direction
+        if(the_map(1+2*x_to_idx(room.first),2*y_to_idx(room.second)) == '-') {
+            point next_room = point(room.first,room.second-1);
+            process_next_room(next_room);
+        }
+        // South direction
+        if(the_map(1+2*x_to_idx(room.first),2+2*y_to_idx(room.second)) == '-') {
+            point next_room = point(room.first,room.second+1);
+            process_next_room(next_room);
+        }
+        // East direction
+        if(the_map(2+2*x_to_idx(room.first),1+2*y_to_idx(room.second)) == '|') {
+            point next_room = point(room.first+1,room.second);
+            process_next_room(next_room);
+        }
+        // West direction
+        if(the_map(2*x_to_idx(room.first),1+2*y_to_idx(room.second)) == '|') {
+            point next_room = point(room.first-1,room.second);
+            process_next_room(next_room);
+        }
+    }
+
+    // Find the furthest room
+    p_idx max_dist = std::numeric_limits<p_idx>::min();
+    for(auto map_it = distances.cbegin(); map_it != distances.cend(); ++map_it) {
+        if(map_it->second > max_dist) {
+            max_dist = map_it->second;
+        }
+    }
+
+    std::cout << "The distance to the farthest room is: " << max_dist << std::endl;
 
     if(test_value_given) {
         array_2d<char> answer_map;
