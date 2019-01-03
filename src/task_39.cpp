@@ -11,20 +11,48 @@
 
 typedef int p_idx;
 
-std::vector<std::string> combine(const std::vector<std::vector<std::string>>& list) {
+void print_options(const std::vector<std::vector<std::vector<std::string>>>& options, std::ostream& out) {
+    for(auto it_1 = options.cbegin(); it_1 != options.cend(); ++it_1) {
+        out << "Layer 1 item" << std::endl;
+        for(auto it_2 = it_1->cbegin(); it_2 != it_1->cend(); ++it_2) {
+            out << "Layer 2 item" << std::endl;
+            for(auto it_3 = it_2->cbegin(); it_3 != it_2->cend(); ++it_3) {
+                out << *it_3 << std::endl;
+            }
+        }
+    }
+}
+
+void print_options(const std::vector<std::vector<std::string>>& options, std::ostream& out) {
+    for(auto it_1 = options.cbegin(); it_1 != options.cend(); ++it_1) {
+        out << "Layer 1 item" << std::endl;
+        for(auto it_2 = it_1->cbegin(); it_2 != it_1->cend(); ++it_2) {
+            out << *it_2 << std::endl;
+        }
+    }
+}
+
+std::vector<std::string> combine(std::vector<std::vector<std::string>>& list) {
+    //std::cout << "Combine called: " << std::endl;
+    //print_options(list, std::cout);
     std::vector<std::string> results;
-    for(auto list_it = list.cbegin(); list_it != list.cend(); ++list_it) {
+    for(auto list_it = list.begin(); list_it != list.end(); ++list_it) {
         std::vector<std::string> new_results;
         if(results.size() > 0) {
             for(size_t o_idx = 0; o_idx < results.size(); ++o_idx) {
-                std::cout << "level 1" << std::endl;
+                //std::cout << "level 1" << std::endl;
                 for(size_t l_idx = 0; l_idx < list_it->size(); ++l_idx) {
-                    std::cout << "level 2" << std::endl;
+                    //std::cout << "level 2" << std::endl;
                     // Concatenate.
                     new_results.push_back(results[o_idx]+(*list_it)[l_idx]);
                 }
             }
         } else {
+            //std::cout << "Initially empty!" << std::endl;
+            //ConstForEach(*list_it, [](const std::string& in) {
+            //    std::cout << in << std::endl;
+            //});
+            std::swap(new_results, *list_it);
         }
         std::swap(results, new_results);
     }
@@ -43,35 +71,23 @@ void remove_duplicates(std::vector<std::string>& in) {
     }
 }
 
-void print_options(const std::vector<std::vector<std::vector<std::string>>>& options, std::ostream& out) {
-    for(auto it_1 = options.cbegin(); it_1 != options.cend(); ++it_1) {
-        out << "Layer 1 item" << std::endl;
-        for(auto it_2 = it_1->cbegin(); it_2 != it_1->cend(); ++it_2) {
-            out << "Layer 2 item" << std::endl;
-            for(auto it_3 = it_2->cbegin(); it_3 != it_2->cend(); ++it_3) {
-                out << *it_3 << std::endl;
-            }
-        }
-    }
-}
-
 // The result of this function is a vector with all options expanded.
 std::vector<std::string> expand_regex(std::string& regex_line, const int stack_level = 0) {
-    std::cout << "expand_regex: (" << regex_line << ") (" << stack_level << ")" << std::endl;
+    //std::cout << "expand_regex: (" << regex_line << ") (" << stack_level << ")" << std::endl;
     // Record all options
     std::vector<std::vector<std::vector<std::string>>> options;
     options.push_back(std::vector<std::vector<std::string>>()); // initial empty vector.
     options.rbegin()->push_back(std::vector<std::string>());
     options.rbegin()->rbegin()->push_back("");
     while(regex_line.size() != 0) {
-        std::cout << "Main loop" << std::endl;
-        print_options(options, std::cout);
+        //std::cout << "Main loop" << std::endl;
+        //print_options(options, std::cout);
         if((regex_line[0] == '^')||(regex_line[0] == '$')) {
-            std::cout << "branch 1" << std::endl;
+            //std::cout << "branch 1" << std::endl;
             // Skip these characters
             regex_line.erase(0,1);
         } else if(regex_line[0] == '(') {
-            std::cout << "branch 2" << std::endl;
+            //std::cout << "branch 2" << std::endl;
             regex_line.erase(0,1);
             options.rbegin()->push_back(expand_regex(regex_line, stack_level+1));
             if(regex_line[0] != ')') {
@@ -83,16 +99,17 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
             options.rbegin()->push_back(std::vector<std::string>());
             options.rbegin()->rbegin()->push_back("");
         } else if(regex_line[0] == '|') {
-            std::cout << "branch 3" << std::endl;
+            //std::cout << "branch 3" << std::endl;
             // Start new option section
             options.push_back(std::vector<std::vector<std::string>>());
+            options.rbegin()->push_back(std::vector<std::string>());
             options.rbegin()->rbegin()->push_back("");
             regex_line.erase(0,1);
         } else if(regex_line[0] == ')') {
-            std::cout << "branch 4" << std::endl;
+            //std::cout << "branch 4" << std::endl;
             break; // break here. the superior call will finish
         } else {
-            std::cout << "branch 5" << std::endl;
+            //std::cout << "branch 5" << std::endl;
             // Add these characters to the last group of the last option set.
             options.rbegin()->rbegin()->rbegin()->push_back(regex_line[0]); // Add to the last option.
             regex_line.erase(0,1);
@@ -103,10 +120,10 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
     while(options.size() != 0) {
         // perform multiplexing of strings
         std::vector<std::string> option_list = combine(options[0]);
-        std::cout << "Combined option list:" << std::endl;
-        ConstForEach(option_list, [](const std::string& in) {
-            std::cout << in << std::endl;
-        });
+        //std::cout << "Combined option list:" << std::endl;
+        //ConstForEach(option_list, [](const std::string& in) {
+        //    std::cout << in << std::endl;
+        //});
         // Add to resulting options.
         resulting_options.insert(resulting_options.end(), option_list.begin(), option_list.end());
         // Remove the element from options
@@ -256,7 +273,7 @@ int main(int argc, char** argv) {
         p_idx room_y = 0;
         for(size_t idx = 0; idx < path.size(); ++idx) {
             char the_char = path[idx];
-            std::cout << "The char: " << the_char << std::endl;
+            //std::cout << "The char: " << the_char << std::endl;
             switch(the_char) {
                 case ('N'): {
                     p_idx x_idx = 1+2*x_to_idx(room_x);
