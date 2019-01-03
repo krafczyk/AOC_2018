@@ -496,5 +496,14 @@ int main(int argc, char** argv) {
         }
     }
 
+    // Now test whether furthest room distance matched
+    if(test_value_given) {
+        if(test_value == max_dist) {
+            std::cout << "Test Passed!" << std::endl;
+        } else {
+            std::cout << "Test Failed!" << std::endl;
+        }
+    }
+
 	return 0;
 }
