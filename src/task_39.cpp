@@ -72,10 +72,11 @@ void remove_duplicates(std::vector<std::string>& in) {
 }
 
 // The result of this function is a vector with all options expanded.
-std::vector<std::string> expand_regex(std::string& regex_line, const int stack_level = 0) {
+std::vector<std::string> expand_regex(std::string& regex_line) {
     //std::cout << "expand_regex: (" << regex_line << ") (" << stack_level << ")" << std::endl;
     // Record all options
     std::vector<std::vector<std::vector<std::string>>> options;
+    std::vector<decltype(options)> old_options;
     options.push_back(std::vector<std::vector<std::string>>()); // initial empty vector.
     options.rbegin()->push_back(std::vector<std::string>());
     options.rbegin()->rbegin()->push_back("");
@@ -89,15 +90,15 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
         } else if(regex_line[0] == '(') {
             //std::cout << "branch 2" << std::endl;
             regex_line.erase(0,1);
-            options.rbegin()->push_back(expand_regex(regex_line, stack_level+1));
-            if(regex_line[0] != ')') {
-                throw std::runtime_error("Didn't get expected end parens");
-            }
-            // consume end parens
-            regex_line.erase(0,1);
-            // Add new empty option.
+            // Save state and start new 'call'
+            old_options.push_back(options);
+            options.clear();
+
+            // initialize empty options.
+            options.push_back(std::vector<std::vector<std::string>>());
             options.rbegin()->push_back(std::vector<std::string>());
             options.rbegin()->rbegin()->push_back("");
+
         } else if(regex_line[0] == '|') {
             //std::cout << "branch 3" << std::endl;
             // Start new option section
@@ -107,7 +108,40 @@ std::vector<std::string> expand_regex(std::string& regex_line, const int stack_l
             regex_line.erase(0,1);
         } else if(regex_line[0] == ')') {
             //std::cout << "branch 4" << std::endl;
-            break; // break here. the superior call will finish
+            if(old_options.size() > 0) {
+                // Unwind current options
+                std::vector<std::string> new_options;
+                while(options.size() != 0) {
+                    // perform multiplexing of strings
+                    std::vector<std::string> option_list = combine(options[0]);
+                    //std::cout << "Combined option list:" << std::endl;
+                    //ConstForEach(option_list, [](const std::string& in) {
+                    //    std::cout << in << std::endl;
+                    //});
+                    // Add to resulting options.
+                    new_options.insert(new_options.end(), option_list.begin(), option_list.end());
+                    // Remove the element from options
+                    options.erase(options.begin());
+                }
+                remove_duplicates(new_options);
+
+                // Pop old options off list.
+                options = *(old_options.rbegin());
+                old_options.erase(old_options.end()-1);
+
+                // Add new options to current option
+                options.rbegin()->push_back(new_options);
+                if(regex_line[0] != ')') {
+                    throw std::runtime_error("Didn't get expected end parens");
+                }
+                // consume end parens
+                regex_line.erase(0,1);
+                // Add new empty option.
+                options.rbegin()->push_back(std::vector<std::string>());
+                options.rbegin()->rbegin()->push_back("");
+            } else {
+                std::runtime_error("This shouldn't happen!!");
+            }
         } else {
             //std::cout << "branch 5" << std::endl;
             // Add these characters to the last group of the last option set.
