@@ -8,8 +8,11 @@
 #include <algorithm>
 #include "ArgParseStandalone.h"
 #include "utilities.h"
+#include <signal.h>
 
 typedef int p_idx;
+typedef std::pair<p_idx,p_idx> point;
+typedef std::map<point,char> room_map;
 
 void print_options(const std::vector<std::vector<std::vector<std::string>>>& options, std::ostream& out) {
     for(auto it_1 = options.cbegin(); it_1 != options.cend(); ++it_1) {
@@ -108,10 +111,13 @@ std::vector<std::string> expand_regex(std::string& regex_line) {
             regex_line.erase(0,1);
         } else if(regex_line[0] == ')') {
             //std::cout << "branch 4" << std::endl;
+            //print_options(options, std::cout);
             if(old_options.size() > 0) {
+                //std::cout << "unwinding options" << std::endl;
                 // Unwind current options
                 std::vector<std::string> new_options;
                 while(options.size() != 0) {
+                    //std::cout << "unwind loop" << std::endl;
                     // perform multiplexing of strings
                     std::vector<std::string> option_list = combine(options[0]);
                     //std::cout << "Combined option list:" << std::endl;
@@ -123,7 +129,7 @@ std::vector<std::string> expand_regex(std::string& regex_line) {
                     // Remove the element from options
                     options.erase(options.begin());
                 }
-                remove_duplicates(new_options);
+                //remove_duplicates(new_options);
 
                 // Pop old options off list.
                 options = *(old_options.rbegin());
@@ -163,11 +169,138 @@ std::vector<std::string> expand_regex(std::string& regex_line) {
         // Remove the element from options
         options.erase(options.begin());
     }
-    remove_duplicates(resulting_options);
+    //remove_duplicates(resulting_options);
     return resulting_options;
 }
 
+// A node holding simple content.
+// the root node has no parents
+// leaf nodes have no children.
+class node {
+    public:
+        node(const std::string& content) {
+            this->content = content;
+        }
+        std::vector<node*> parents;
+        std::vector<node*> children;
+        std::string content;
+};
+
+node* build_tree(std::string& map_string) {
+    // Create root node.
+    node* root = new node("");
+
+    node* current_node = root;
+
+    std::string current_path;
+
+    // Append a new node.
+    auto append_new_node = [&](const std::string& content) {
+            node* new_node = new node(content);
+            current_path.clear();
+            // Add the initial parent.
+            new_node->parents.push_back(current_node);
+            current_node->children.push_back(new_node);
+    };
+
+    while (map_string.size() != 0) {
+        char the_char = map_string[0];
+        if((the_char == '^')||(the_char == '$')) {
+            // Skip these characters
+            map_string.erase(0,1);
+        } else if (the_char == '(') {
+            // Append a new node.
+            append_new_node(current_path);
+        } else if (the_char == ')') {
+        } else if (the_char == '|') {
+            // Append a new node.
+            append_new_node(current_path);
+
+            // Back up to an enclosing parns
+            int depth = 0;
+            while((current_node->content != "(")||(depth != 0)) {
+                if(current_node->parents.size() == 0) {
+                    throw std::runtime_error("Shouldn't hit the root node here!");
+                }
+                // Advance to previous node.
+                current_node = current_node->parents[0];
+                if(current_node->content == ")") {
+                    depth += 1;
+                } else if (current_node->content == "(") {
+                    depth -= 1;
+                }
+            }
+            // Now at begin parens.
+        } else {
+            // Normal characters
+            switch(the_char) {
+                case ('N'):
+                case ('S'):
+                case ('W'):
+                case ('E'): {
+                    current_path.push_back(the_char);
+                    break;
+                }
+                default: {
+                    throw std::runtime_error("Unexpected character");
+                }
+            }
+        }
+    }
+
+    return root;
+}
+
+/*
+room_map build_map(std::string& map_string) {
+    room_map answer;
+    std::vector<point> current_endpoints;
+    current_endpoints.push_back(point(0,0));
+    std::vector<std::vector<point>> history;
+    while(map_string.size() != 0) {
+        char the_char = map_string[0];
+        if((the_char == '^')||(the_char == '$')) {
+            // Skip these characters
+            map_string.erase(0,1);
+        } else if (the_char == '(') {
+        } else if (the_char == ')') {
+        } else if (the_char == '|') {
+        } else {
+            // advance the current endpoints
+            for(auto cur_p_it = current_endpoints.begin(); cur_p_it != current_endpoints.end(); ++cur_p_it) {
+                answer[*cur_p_it] = the_char;
+                if(the_char == 'N') {
+                    cur_p_it->second -= 1;
+                } else if (the_char == 'S') {
+                    cur_p_it->second += 1;
+                } else if (the_char == 'E') {
+                    cur_p_it->first += 1;
+                } else if (the_char == 'W') {
+                    cur_p_it->first -= 1;
+                } else {
+                    throw std::runtime_error("Unexpected character!!!");
+                }
+            }
+            map_string.erase(0,1);
+        }
+    }
+    return answer;
+}
+*/
+
+void handler(int s) {
+    std::cout << "Caught signal " << s << std::endl;
+    exit(1);
+}
+
 int main(int argc, char** argv) {
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
@@ -206,6 +339,7 @@ int main(int argc, char** argv) {
     std::string regex_line;
     std::getline(infile, regex_line);
 
+    std::cout << "Passed Regex length: " << regex_line.size() << std::endl;
     if(verbose) {
         std::cout << "Passed Regex: " << regex_line << std::endl;
     }
