@@ -186,6 +186,55 @@ class node {
         std::string content;
 };
 
+template<typename F>
+void visit_nodes(node* root, F functor) {
+    std::set<node*> encountered_nodes;
+    encountered_nodes.insert(root);
+    std::vector<node*> node_path;
+    node_path.push_back(root);
+
+    // Call the functor on the root node.
+    functor(root);
+
+    // Initialize the temp variable.
+    node* temp = root;
+    while(true) {
+        // Invariants
+        // - node_path already contains the current 'temp'
+        // - encountered_nodes contains every node encountered so far including the current 'temp'
+        // - functor has already been called on 'temp'.
+
+        // see whether there are any unencountered children.
+        node* first_unencountered_child = nullptr;
+        for(auto it = temp->children.begin(); it != temp->children.end(); ++it) {
+            if(!hasElement(encountered_nodes, *it)) {
+                first_unencountered_child = *it;
+                break;
+            }
+        }
+        // Move to a new node based on this info.
+        if(first_unencountered_child == nullptr) {
+            // this node has no children or no unencountered children.
+            if(temp == root) {
+                // We're at the top! quit!
+                break;
+            } else {
+                // Remove last node encountered. Set temp to the new location.
+                temp = *(--node_path.erase(--node_path.end()));
+            }
+        } else {
+            // Advance temp to the first_unencountered_child.
+            temp = first_unencountered_child;
+            // Add the new temp to the node path.
+            node_path.push_back(temp);
+            // Add the new temp as encountered.
+            encountered_nodes.insert(temp);
+            // Execute the functor.
+            functor(temp);
+        }
+    }
+}
+
 node* build_tree(std::string& map_string) {
     // Create root node.
     node* root = new node("");
@@ -242,55 +291,14 @@ node* build_tree(std::string& map_string) {
             // These will then be parents of a new closing parens.
 
             backup_to_enclosing_parens();
-            std::set<node*> encountered_nodes;
             node* initial_parens = current_node;
-            encountered_nodes.insert(initial_parens);
-            std::vector<node*> node_path;
-            node_path.push_back(initial_parens);
             std::vector<node*> dangling_nodes;
-            // Check if the initial parens has any children. if not, add it to the dangling_nodes.
-            if(initial_parens->children.size() == 0) {
-                dangling_nodes.push_back(initial_parens);
-            }
-            node* temp = initial_parens;
-            while(true) {
-                // Invariants
-                // - node_path already contains the current 'temp'
-                // - encountered_nodes contains every node encountered so far including the current 'temp'
-                // - dangling_nodes contains any node which has no children including the current 'temp'.
-                //   This should also be in the proper order.
+            visit_nodes(initial_parens, [&](node* the_node) {
+                if(the_node->children.size() == 0) {
+                    dangling_nodes.push_back(the_node);
+                }
+            });
 
-                // see whether there are any unencountered children.
-                node* first_unencountered_child = nullptr;
-                for(auto it = temp->children.begin(); it != temp->children.end(); ++it) {
-                    if(!hasElement(encountered_nodes, *it)) {
-                        first_unencountered_child = *it;
-                        break;
-                    }
-                }
-                // Move to a new node based on this info.
-                if(first_unencountered_child == nullptr) {
-                    // this node has no children or no unencountered children.
-                    if(temp == initial_parens) {
-                        // We're at the top! quit!
-                        break;
-                    } else {
-                        // Remove last node encountered. Set temp to the new location.
-                        temp = *(--node_path.erase(--node_path.end()));
-                    }
-                } else {
-                    // Advance temp to the first_unencountered_child.
-                    temp = first_unencountered_child;
-                    // Add the new temp to the node path.
-                    node_path.push_back(temp);
-                    // Add the new temp as encountered.
-                    encountered_nodes.insert(temp);
-                    // Check if this node is dangling.
-                    if(temp->children.size() == 0) {
-                        dangling_nodes.push_back(temp);
-                    }
-                }
-            }
             // Create new end parens node.
             node* end_parens = new node(")");
             end_parens->parents = dangling_nodes;
@@ -423,6 +431,16 @@ int main(int argc, char** argv) {
     if(verbose) {
         std::cout << "Passed Regex: " << regex_line << std::endl;
     }
+
+    node* tree_root = build_tree(regex_line);
+
+    size_t node_count = 0;
+    visit_nodes(tree_root, [&](node* the_node [[maybe_unused]]){ node_count += 1; });
+
+    // Count the number of nodes.
+    std::cout << "Number of nodes: " << node_count << std::endl;
+
+    throw std::runtime_error("Quitting early to test");
 
     // Expand the regex out.
     std::vector<std::string> unique_paths = expand_regex(regex_line);
