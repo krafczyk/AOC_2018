@@ -184,6 +184,16 @@ class node {
         std::vector<node*> parents;
         std::vector<node*> children;
         std::string content;
+        void print(std::ostream& out, bool children = true) const {
+            out << this << "[" << this->content << "]"; 
+            if(children) {
+                out << " Children: ";
+                for(auto child_it = this->children.begin(); child_it != this->children.end(); ++child_it) {
+                    (*child_it)->print(out, false);
+                    out << " ";
+                }
+            }
+        }
 };
 
 template<typename F>
@@ -252,27 +262,44 @@ node* build_tree(std::string& map_string) {
     };
 
     auto backup_to_enclosing_parens = [&]() {
+        std::cout << "Backing up to an open parens" << std::endl;
         int depth = 0;
         while((current_node->content != "(")||(depth != 0)) {
+            std::cout << "loop" << std::endl;
+            std::cout << "Current node: " << current_node->content << std::endl;
+            std::cout << "current depth: " << depth << std::endl;
             if(current_node->parents.size() == 0) {
                 throw std::runtime_error("Shouldn't hit the root node here!");
             }
-            // Advance to previous node.
-            current_node = current_node->parents[0];
+            // Test if we need to adjust depth
             if(current_node->content == ")") {
                 depth += 1;
             } else if (current_node->content == "(") {
                 depth -= 1;
             }
+            // Advance to previous node.
+            current_node = current_node->parents[0];
+        }
+        std::cout << "found open parens has the following children:" << std::endl;
+        for(auto child_it = current_node->children.begin(); child_it != current_node->children.end(); ++child_it) {
+            std::cout << (*child_it)->content << std::endl;
         }
     };
 
     while (map_string.size() != 0) {
         char the_char = map_string[0];
+        std::cout << "Main loop: " << the_char << std::endl;
+        std::cout << "tree state: " << std::endl;
+        visit_nodes(root, [&](node* the_node){
+            the_node->print(std::cout);
+            std::cout << std::endl;
+        });
         if((the_char == '^')||(the_char == '$')) {
+            std::cout << "branch 1" << std::endl;
             // Skip these characters
             map_string.erase(0,1);
         } else if (the_char == '(') {
+            std::cout << "branch 2" << std::endl;
             // Append a new node.
             append_new_node(current_path);
             current_path.clear();
@@ -285,6 +312,7 @@ node* build_tree(std::string& map_string) {
             // Remove the parens
             map_string.erase(0,1);
         } else if (the_char == ')') {
+            std::cout << "branch 3" << std::endl;
             // Reached closing parens.
             // We need to back up to an on the level open parens,
             // Then find all decendents which have no children.
@@ -301,12 +329,18 @@ node* build_tree(std::string& map_string) {
 
             // Create new end parens node.
             node* end_parens = new node(")");
+            // Set the end_parens's parents
             end_parens->parents = dangling_nodes;
+            // Set the children of the dangling nodes to the end_parens.
+            for(auto node_it = dangling_nodes.begin(); node_it != dangling_nodes.end(); ++node_it) {
+                (*node_it)->children.push_back(end_parens);
+            }
             // Update the current node to match the end_parens.
             current_node = end_parens;
             // Remove the parens
             map_string.erase(0,1);
         } else if (the_char == '|') {
+            std::cout << "branch 4" << std::endl;
             // Append a new node.
             append_new_node(current_path);
             current_path.clear();
@@ -317,6 +351,7 @@ node* build_tree(std::string& map_string) {
             // Remove pipe
             map_string.erase(0,1);
         } else {
+            std::cout << "branch 5" << std::endl;
             // Normal characters
             switch(the_char) {
                 case ('N'):
@@ -435,12 +470,21 @@ int main(int argc, char** argv) {
     node* tree_root = build_tree(regex_line);
 
     size_t node_count = 0;
-    visit_nodes(tree_root, [&](node* the_node [[maybe_unused]]){ node_count += 1; });
+    visit_nodes(tree_root, [&](node* the_node [[maybe_unused]]){
+        node_count += 1;
+    });
 
     // Count the number of nodes.
     std::cout << "Number of nodes: " << node_count << std::endl;
 
+    std::cout << "Nodes in order:" << std::endl;
+    visit_nodes(tree_root, [&](node* the_node){
+        the_node->print(std::cout);
+        std::cout << std::endl;
+    });
+
     throw std::runtime_error("Quitting early to test");
+
 
     // Expand the regex out.
     std::vector<std::string> unique_paths = expand_regex(regex_line);
