@@ -197,10 +197,25 @@ node* build_tree(std::string& map_string) {
     // Append a new node.
     auto append_new_node = [&](const std::string& content) {
             node* new_node = new node(content);
-            current_path.clear();
             // Add the initial parent.
             new_node->parents.push_back(current_node);
             current_node->children.push_back(new_node);
+    };
+
+    auto backup_to_enclosing_parens = [&]() {
+        int depth = 0;
+        while((current_node->content != "(")||(depth != 0)) {
+            if(current_node->parents.size() == 0) {
+                throw std::runtime_error("Shouldn't hit the root node here!");
+            }
+            // Advance to previous node.
+            current_node = current_node->parents[0];
+            if(current_node->content == ")") {
+                depth += 1;
+            } else if (current_node->content == "(") {
+                depth -= 1;
+            }
+        }
     };
 
     while (map_string.size() != 0) {
@@ -211,26 +226,88 @@ node* build_tree(std::string& map_string) {
         } else if (the_char == '(') {
             // Append a new node.
             append_new_node(current_path);
+            current_path.clear();
+            // Advance to the newly added node.
+            current_node = *current_node->children.rbegin();
+            // Append a new node which is an open parens
+            append_new_node("(");
+            // Advance to the newly added node.
+            current_node = *current_node->children.rbegin();
+            // Remove the parens
+            map_string.erase(0,1);
         } else if (the_char == ')') {
+            // Reached closing parens.
+            // We need to back up to an on the level open parens,
+            // Then find all decendents which have no children.
+            // These will then be parents of a new closing parens.
+
+            backup_to_enclosing_parens();
+            std::set<node*> encountered_nodes;
+            node* initial_parens = current_node;
+            encountered_nodes.insert(initial_parens);
+            std::vector<node*> node_path;
+            node_path.push_back(initial_parens);
+            std::vector<node*> dangling_nodes;
+            // Check if the initial parens has any children. if not, add it to the dangling_nodes.
+            if(initial_parens->children.size() == 0) {
+                dangling_nodes.push_back(initial_parens);
+            }
+            node* temp = initial_parens;
+            while(true) {
+                // Invariants
+                // - node_path already contains the current 'temp'
+                // - encountered_nodes contains every node encountered so far including the current 'temp'
+                // - dangling_nodes contains any node which has no children including the current 'temp'.
+                //   This should also be in the proper order.
+
+                // see whether there are any unencountered children.
+                node* first_unencountered_child = nullptr;
+                for(auto it = temp->children.begin(); it != temp->children.end(); ++it) {
+                    if(!hasElement(encountered_nodes, *it)) {
+                        first_unencountered_child = *it;
+                        break;
+                    }
+                }
+                // Move to a new node based on this info.
+                if(first_unencountered_child == nullptr) {
+                    // this node has no children or no unencountered children.
+                    if(temp == initial_parens) {
+                        // We're at the top! quit!
+                        break;
+                    } else {
+                        // Remove last node encountered. Set temp to the new location.
+                        temp = *(--node_path.erase(--node_path.end()));
+                    }
+                } else {
+                    // Advance temp to the first_unencountered_child.
+                    temp = first_unencountered_child;
+                    // Add the new temp to the node path.
+                    node_path.push_back(temp);
+                    // Add the new temp as encountered.
+                    encountered_nodes.insert(temp);
+                    // Check if this node is dangling.
+                    if(temp->children.size() == 0) {
+                        dangling_nodes.push_back(temp);
+                    }
+                }
+            }
+            // Create new end parens node.
+            node* end_parens = new node(")");
+            end_parens->parents = dangling_nodes;
+            // Update the current node to match the end_parens.
+            current_node = end_parens;
+            // Remove the parens
+            map_string.erase(0,1);
         } else if (the_char == '|') {
             // Append a new node.
             append_new_node(current_path);
+            current_path.clear();
 
-            // Back up to an enclosing parns
-            int depth = 0;
-            while((current_node->content != "(")||(depth != 0)) {
-                if(current_node->parents.size() == 0) {
-                    throw std::runtime_error("Shouldn't hit the root node here!");
-                }
-                // Advance to previous node.
-                current_node = current_node->parents[0];
-                if(current_node->content == ")") {
-                    depth += 1;
-                } else if (current_node->content == "(") {
-                    depth -= 1;
-                }
-            }
+            // Back up to an enclosing parens
+            backup_to_enclosing_parens();
             // Now at begin parens.
+            // Remove pipe
+            map_string.erase(0,1);
         } else {
             // Normal characters
             switch(the_char) {
@@ -238,7 +315,10 @@ node* build_tree(std::string& map_string) {
                 case ('S'):
                 case ('W'):
                 case ('E'): {
+                    // Add character
                     current_path.push_back(the_char);
+                    // Remove character from string.
+                    map_string.erase(0,1);
                     break;
                 }
                 default: {
