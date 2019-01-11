@@ -380,6 +380,23 @@ node* build_tree(std::string& map_string) {
     return root;
 }
 
+std::vector<std::vector<node*>> unique_node_paths(node* root) {
+    std::vector<std::vector<node*>> answer;
+    // Build initial path.
+    answer.push_back(std::vector<node*>(root));
+
+    bool modified = true;
+    while(modified) {
+        modified = false;
+        for(auto path_it = answer.begin(); path_it != answer.end();) {
+            std::vector<node*>& initial_path = *path_it;
+            node* last_node = *initial_path.rbegin();
+            if(last_node->children.size() != 0) {
+            }
+        }
+    }
+}
+
 /*
 room_map build_map(std::string& map_string) {
     room_map answer;
