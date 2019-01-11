@@ -187,6 +187,11 @@ class node {
         void print(std::ostream& out, bool children = true) const {
             out << this << "[" << this->content << "]"; 
             if(children) {
+                out << " Parents: ";
+                for(auto parent_it = this->parents.begin(); parent_it != this->parents.end(); ++parent_it) {
+                    (*parent_it)->print(out, false);
+                    out << " ";
+                }
                 out << " Children: ";
                 for(auto child_it = this->children.begin(); child_it != this->children.end(); ++child_it) {
                     (*child_it)->print(out, false);
@@ -255,10 +260,19 @@ node* build_tree(std::string& map_string) {
 
     // Append a new node.
     auto append_new_node = [&](const std::string& content) {
-            node* new_node = new node(content);
-            // Add the initial parent.
-            new_node->parents.push_back(current_node);
-            current_node->children.push_back(new_node);
+        node* new_node = new node(content);
+        std::cout << "Appending a new node: ";
+        new_node->print(std::cout);
+        std::cout << std::endl;
+        // Add the initial parent.
+        new_node->parents.push_back(current_node);
+        std::cout << "the new node: ";
+        new_node->print(std::cout);
+        std::cout << std::endl;
+        current_node->children.push_back(new_node);
+        std::cout << "the current node: ";
+        current_node->print(std::cout);
+        std::cout << std::endl;
     };
 
     auto backup_to_enclosing_parens = [&]() {
@@ -286,9 +300,13 @@ node* build_tree(std::string& map_string) {
         }
     };
 
+    char last_char = 0;
     while (map_string.size() != 0) {
         char the_char = map_string[0];
         std::cout << "Main loop: " << the_char << std::endl;
+        if(last_char != 0) {
+            std::cout << "last char: " << last_char << std::endl;
+        }
         std::cout << "tree state: " << std::endl;
         visit_nodes(root, [&](node* the_node){
             the_node->print(std::cout);
@@ -311,8 +329,15 @@ node* build_tree(std::string& map_string) {
             current_node = *current_node->children.rbegin();
             // Remove the parens
             map_string.erase(0,1);
+            std::cout << "end branch 2" << std::endl;
         } else if (the_char == ')') {
             std::cout << "branch 3" << std::endl;
+            if((current_path.size() != 0)||((current_path.size() == 0)&&(last_char != ')'))) {
+                // Append a new node.
+                append_new_node(current_path);
+                current_path.clear();
+            }
+
             // Reached closing parens.
             // We need to back up to an on the level open parens,
             // Then find all decendents which have no children.
@@ -341,9 +366,11 @@ node* build_tree(std::string& map_string) {
             map_string.erase(0,1);
         } else if (the_char == '|') {
             std::cout << "branch 4" << std::endl;
-            // Append a new node.
-            append_new_node(current_path);
-            current_path.clear();
+            if((current_path.size() != 0)||((current_path.size() == 0)&&(last_char != ')'))) {
+                // Append a new node.
+                append_new_node(current_path);
+                current_path.clear();
+            }
 
             // Back up to an enclosing parens
             backup_to_enclosing_parens();
@@ -369,7 +396,18 @@ node* build_tree(std::string& map_string) {
                 }
             }
         }
+        last_char = the_char;
     }
+    // Check whether there are characters to add..
+    if(current_path.size() != 0) {
+        append_new_node(current_path);
+    }
+
+    // We now need to remove the top node since it's empty.
+    node* temp = root;
+    root = root->children[0];
+    delete temp;
+    root->parents.clear();
 
     return root;
 }
