@@ -261,27 +261,14 @@ node* build_tree(std::string& map_string) {
     // Append a new node.
     auto append_new_node = [&](const std::string& content) {
         node* new_node = new node(content);
-        std::cout << "Appending a new node: ";
-        new_node->print(std::cout);
-        std::cout << std::endl;
         // Add the initial parent.
         new_node->parents.push_back(current_node);
-        std::cout << "the new node: ";
-        new_node->print(std::cout);
-        std::cout << std::endl;
         current_node->children.push_back(new_node);
-        std::cout << "the current node: ";
-        current_node->print(std::cout);
-        std::cout << std::endl;
     };
 
     auto backup_to_enclosing_parens = [&]() {
-        std::cout << "Backing up to an open parens" << std::endl;
         int depth = 0;
         while((current_node->content != "(")||(depth != 0)) {
-            std::cout << "loop" << std::endl;
-            std::cout << "Current node: " << current_node->content << std::endl;
-            std::cout << "current depth: " << depth << std::endl;
             if(current_node->parents.size() == 0) {
                 throw std::runtime_error("Shouldn't hit the root node here!");
             }
@@ -294,30 +281,15 @@ node* build_tree(std::string& map_string) {
             // Advance to previous node.
             current_node = current_node->parents[0];
         }
-        std::cout << "found open parens has the following children:" << std::endl;
-        for(auto child_it = current_node->children.begin(); child_it != current_node->children.end(); ++child_it) {
-            std::cout << (*child_it)->content << std::endl;
-        }
     };
 
     char last_char = 0;
     while (map_string.size() != 0) {
         char the_char = map_string[0];
-        std::cout << "Main loop: " << the_char << std::endl;
-        if(last_char != 0) {
-            std::cout << "last char: " << last_char << std::endl;
-        }
-        std::cout << "tree state: " << std::endl;
-        visit_nodes(root, [&](node* the_node){
-            the_node->print(std::cout);
-            std::cout << std::endl;
-        });
         if((the_char == '^')||(the_char == '$')) {
-            std::cout << "branch 1" << std::endl;
             // Skip these characters
             map_string.erase(0,1);
         } else if (the_char == '(') {
-            std::cout << "branch 2" << std::endl;
             // Append a new node.
             append_new_node(current_path);
             current_path.clear();
@@ -329,9 +301,7 @@ node* build_tree(std::string& map_string) {
             current_node = *current_node->children.rbegin();
             // Remove the parens
             map_string.erase(0,1);
-            std::cout << "end branch 2" << std::endl;
         } else if (the_char == ')') {
-            std::cout << "branch 3" << std::endl;
             if((current_path.size() != 0)||((current_path.size() == 0)&&(last_char != ')'))) {
                 // Append a new node.
                 append_new_node(current_path);
@@ -365,7 +335,6 @@ node* build_tree(std::string& map_string) {
             // Remove the parens
             map_string.erase(0,1);
         } else if (the_char == '|') {
-            std::cout << "branch 4" << std::endl;
             if((current_path.size() != 0)||((current_path.size() == 0)&&(last_char != ')'))) {
                 // Append a new node.
                 append_new_node(current_path);
@@ -378,7 +347,6 @@ node* build_tree(std::string& map_string) {
             // Remove pipe
             map_string.erase(0,1);
         } else {
-            std::cout << "branch 5" << std::endl;
             // Normal characters
             switch(the_char) {
                 case ('N'):
@@ -515,11 +483,13 @@ int main(int argc, char** argv) {
     // Count the number of nodes.
     std::cout << "Number of nodes: " << node_count << std::endl;
 
+    /*
     std::cout << "Nodes in order:" << std::endl;
     visit_nodes(tree_root, [&](node* the_node){
         the_node->print(std::cout);
         std::cout << std::endl;
     });
+    */
 
     throw std::runtime_error("Quitting early to test");
 
