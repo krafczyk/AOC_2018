@@ -380,6 +380,27 @@ node* build_tree(std::string& map_string) {
     return root;
 }
 
+std::pair<point,point> calculate_path_extents(node* root) {
+    point min_vals;
+    point max_vals;
+    std::vector<node*> endpoints;
+    endpoints.push_back(root);
+    std::vector<point> positions;
+    positions.push_back(point(0,0));
+
+    bool modified = true;
+    while(modified) {
+        modified = false;
+        for(auto node_it = endpoints.begin(); node_it != endpoints.end(); ++node_it) {
+            if((*node_it)->children.size() != 0) {
+            } else {
+            }
+        }
+    }
+
+    return std::pair<point,point>(min_vals,max_vals);
+}
+
 std::vector<std::vector<node*>> unique_node_paths(node* root) {
     std::vector<std::vector<node*>> answer;
     // Build initial path.
