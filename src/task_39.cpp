@@ -383,7 +383,9 @@ node* build_tree(std::string& map_string) {
 std::vector<std::vector<node*>> unique_node_paths(node* root) {
     std::vector<std::vector<node*>> answer;
     // Build initial path.
-    answer.push_back(std::vector<node*>(root));
+    std::vector<node*> temp;
+    temp.push_back(root);
+    answer.push_back(temp);
 
     bool modified = true;
     while(modified) {
@@ -392,9 +394,36 @@ std::vector<std::vector<node*>> unique_node_paths(node* root) {
             std::vector<node*>& initial_path = *path_it;
             node* last_node = *initial_path.rbegin();
             if(last_node->children.size() != 0) {
+                if(last_node->children.size() == 1) {
+                    // Can just add a new node in this case.
+                    initial_path.push_back(last_node->children[0]);
+                    modified = true;
+                    // Advance to next path.
+                    ++path_it;
+                } else {
+                    // Need to copy the current path as a base.
+                    std::vector<node*> base_path = initial_path;
+                    std::vector<std::vector<node*>> new_paths;
+                    // Add first
+                    initial_path.push_back(last_node->children[0]);
+                    ++path_it; // advance to next path.
+                    // create new 
+                    for(size_t idx = 1; idx < last_node->children.size(); ++idx) {
+                        std::vector<node*> new_path = base_path;
+                        new_path.push_back(last_node->children[idx]);
+                        new_paths.push_back(new_path);
+                    }
+                    // Insert the new paths
+                    path_it = answer.insert(path_it, new_paths.begin(), new_paths.end());
+                }
+            } else {
+                // Move on to next path.
+                ++path_it;
             }
         }
     }
+
+    return answer;
 }
 
 /*
@@ -507,6 +536,9 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     });
     */
+
+    std::vector<std::vector<node*>> node_paths = unique_node_paths(tree_root);
+    std::cout << "Number of unique node paths: " << node_paths.size() << std::endl;
 
     throw std::runtime_error("Quitting early to test");
 
