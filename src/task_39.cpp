@@ -377,35 +377,203 @@ node* build_tree(std::string& map_string) {
     delete temp;
     root->parents.clear();
 
+    // We need to add a new node at the end.
+    node* final_node = new node("");
+    std::vector<node*> dangling_nodes;
+    visit_nodes(root, [&](node* the_node) {
+        if(the_node->children.size() == 0) {
+            dangling_nodes.push_back(the_node);
+        }
+    });
+
+    if(dangling_nodes.size() > 1) {
+        throw std::runtime_error("We shouldn't have more than one final node!!");
+    }
+
+    dangling_nodes[0]->children.push_back(final_node);
+    final_node->parents.push_back(dangling_nodes[0]);
+
     return root;
 }
 
-void move_point(char dir, point& p) {
+// Prune a useless node from the tree.
+void prune_node(node* the_node) {
+    // Steal the parent and child lists.
+    std::vector<node*> parent_list;
+    std::swap(parent_list, the_node->parents);
+    std::vector<node*> child_list;
+    std::swap(child_list, the_node->children);
+
+    // Add the appropriate children to the parents.
+    for(auto parent_it = parent_list.begin(); parent_it != parent_list.end(); ++parent_it) {
+        // First, increase size of vector.
+        
+    }
+}
+
+// Prune all parentheses from the tree.
+void prune_tree(node* root) {
+    std::vector<node*> open_parens;
+    std::vector<node*> closed_parens;
+    visit_nodes(root, [&](node* the_node) {
+        if(the_node->content == "(") {
+            open_parens.push_back(the_node);
+        } else if(the_node->content == ")") {
+            closed_parens.push_back(the_node);
+        }
+    });
+    // Remove open parens
+    std::cout << "Removing open parens" << std::endl;
+    for(auto node_it = open_parens.begin(); node_it != open_parens.end(); ++node_it) {
+        std::cout << "removing an open parens" << std::endl;
+        node* the_node = *node_it;
+        // Transfer children to parent node.
+        node* the_parent = the_node->parents[0];
+        the_parent->children.clear();
+        the_parent->children = the_node->children;
+        // Transfer parent down to children.
+        for(auto child_it = the_parent->children.begin(); child_it != the_parent->children.end(); ++child_it) {
+            for(auto parent_it = (*child_it)->parents.begin(); parent_it != (*child_it)->parents.end(); ++parent_it) {
+                if(*parent_it == the_node) {
+                    *parent_it = the_parent;
+                }
+            }
+        }
+        // Delete the node.
+        delete the_node;
+    }
+    std::cout << "Removing closed parens" << std::endl;
+    // Remove closed parens
+    for(auto node_it = closed_parens.begin(); node_it != closed_parens.end(); ++node_it) {
+        std::cout << "removing a closed parens" << std::endl;
+        node* the_node = *node_it;
+        if(the_node->children.size() == 0) {
+            throw std::runtime_error("The node has no children!!");
+        }
+        // Transfer parents down to child node.
+        node* the_child = the_node->children[0];
+        the_child->parents.clear();
+        the_child->parents = the_node->parents;
+        // Transfer children up to parents.
+        for(auto parent_it = the_child->parents.begin(); parent_it != the_child->parents.end(); ++parent_it) {
+            for(auto child_it = (*parent_it)->children.begin(); child_it != (*parent_it)->children.end(); ++child_it) {
+                if(*child_it == the_node) {
+                    *child_it = the_child;
+                }
+            }
+        }
+        // Delete node.
+        std::cout << "Deleting a node" << std::endl;
+        delete the_node;
+        std::cout << "Finished deleting a node" << std::endl;
+    }
+    std::cout << "prune end" << std::endl;
+}
+
+p_idx move_point(char dir, point& p) {
     switch(dir) {
         case ('N'): {
             p.second -= 1;
-            break;
+            return 1;
         }
         case ('S'): {
             p.second += 1;
-            break;
+            return 1;
         }
         case ('E'): {
             p.first += 1;
-            break;
+            return 1;
         }
         case ('W'): {
             p.first -= 1;
-            break;
+            return 1;
         }
         case ('('):
         case (')'): {
+            return 0;
             break;
         }
         default: {
             throw std::runtime_error("unexpected direction!");
         }
     }
+}
+
+p_idx content_length(const std::string& content) {
+    p_idx length = 0;
+    for(auto it = content.begin(); it != content.end(); ++it) {
+        switch(*it) {
+            case ('N'):
+            case ('S'):
+            case ('E'):
+            case ('W'): {
+                length += 1;
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+    return length;
+}
+
+p_idx max_path_length(node* root) {
+    p_idx max_length = 0;
+
+    std::vector<node*> endpoints;
+    endpoints.push_back(root);
+    std::vector<p_idx> lengths;
+    lengths.push_back(0);
+
+    // Set the length of the root node.
+    lengths[0] = content_length(root->content);
+
+    // Invariants
+    // - Each length already includes the node its currently at.
+    bool modified = true;
+    while(modified) {
+        modified = false;
+        auto node_it = endpoints.begin();
+        auto len_it = lengths.begin();
+        while(node_it != endpoints.end()) {
+            if((*node_it)->children.size() != 0) {
+                modified = true;
+                if((*node_it)->children.size() == 1) {
+                    // Only a single child.
+                    // Advance to the next node
+                    *node_it = (*node_it)->children[0];
+                    // Move the corresponding length
+                    *len_it += content_length((*node_it)->content);
+                } else {
+                    // Multiple children.
+                    // Save starting length
+                    p_idx prev_len = *len_it;
+                    // Find the new end position for each child.
+                    std::vector<node*> children = (*node_it)->children;
+                    std::vector<p_idx> new_lengths;
+                    for(auto child_it = children.begin(); child_it != children.end(); ++child_it) {
+                        new_lengths.push_back(prev_len+content_length((*child_it)->content));
+                    }
+                    // Remove the current node and position.
+                    node_it = endpoints.erase(node_it);
+                    len_it = lengths.erase(len_it);
+                    // Add the new nodes and positions.
+                    node_it = endpoints.insert(node_it, children.begin(), children.end());
+                    len_it = lengths.insert(len_it, new_lengths.begin(), new_lengths.end());
+                }
+            } else {
+                if(*len_it > max_length) {
+                    max_length = *len_it;
+                }
+                // Remove exhausted endpoint
+                node_it = endpoints.erase(node_it);
+                len_it = lengths.erase(len_it);
+            }
+        }
+    }
+
+    return max_length;
 }
 
 std::pair<point,point> calculate_path_extents(node* root) {
@@ -432,12 +600,10 @@ std::pair<point,point> calculate_path_extents(node* root) {
     };
 
     auto advance_point = [&](point& p, const std::string& path) {
-        std::cout << "Advancing by path: " << path << std::endl;
         for(auto it = path.cbegin(); it != path.cend(); ++it) {
             move_point(*it, p);
             update_extents(p);
         }
-        std::cout << "End of advancing by path" << std::endl;
     };
 
     // advance the root point.
@@ -447,27 +613,20 @@ std::pair<point,point> calculate_path_extents(node* root) {
     // - Each position is at the location after already following those instructions.
     bool modified = true;
     while(modified) {
-        std::cout << "Main loop" << std::endl;
         modified = false;
         auto node_it = endpoints.begin();
         auto pos_it = positions.begin();
         while(node_it != endpoints.end()) {
-            std::cout << "node loop start" << std::endl;
+            //std::cout << "Number of endpoints: " << endpoints.size() << std::endl;
             if((*node_it)->children.size() != 0) {
-                std::cout << "branch 1" << std::endl;
                 modified = true;
                 if((*node_it)->children.size() == 1) {
-                    std::cout << "branch 1 1" << std::endl;
                     // Only a single child.
                     // Advance to the next node
                     *node_it = (*node_it)->children[0];
                     // Move the corresponding position
                     advance_point(*pos_it, (*node_it)->content);
-                    // Move iterators to next elements.
-                    ++node_it;
-                    ++pos_it;
                 } else {
-                    std::cout << "branch 1 2" << std::endl;
                     // Multiple children.
                     // Save starting position
                     point start = *pos_it;
@@ -482,25 +641,104 @@ std::pair<point,point> calculate_path_extents(node* root) {
                     // Remove the current node and position.
                     node_it = endpoints.erase(node_it);
                     pos_it = positions.erase(pos_it);
-                    // Add the new nodes and positions. Advance to after the added nodes/positions.
-                    endpoints.insert(node_it, children.begin(), children.end());
-                    std::advance(node_it, children.size());
-                    positions.insert(pos_it, positions.begin(), positions.end());
-                    std::advance(pos_it, positions.size());
+                    // Add the new nodes and positions.
+                    node_it = endpoints.insert(node_it, children.begin(), children.end());
+                    pos_it = positions.insert(pos_it, new_positions.begin(), new_positions.end());
                 }
             } else {
-                std::cout << "branch 2" << std::endl;
-                // Move to next endpoint.
-                ++node_it;
-                ++pos_it;
+                // Remove exhausted endpoint
+                std::cout << "Removing an exhausted endpoint (" << pos_it->first << "," << pos_it->second << ")" << std::endl;
+                node_it = endpoints.erase(node_it);
+                pos_it = positions.erase(pos_it);
             }
-            std::cout << "node loop finish" << std::endl;
         }
-        std::cout << "Finish main loop" << std::endl;
     }
 
     return std::pair<point,point>(min_vals,max_vals);
 }
+
+/*
+std::pair<point,point> calculate_path_extents_2(node* root) {
+    point min_vals;
+    point max_vals;
+    std::map<node*,std::vector<bool>> branch_decisions_taken;
+    point position;
+
+
+
+    auto update_extents = [&](const point& p) {
+        if(p.first < min_vals.first) {
+            min_vals.first = p.first;
+        }
+        if(p.first > max_vals.first) {
+            max_vals.first = p.first;
+        }
+        if(p.second < min_vals.second) {
+            min_vals.second = p.second;
+        }
+        if(p.second > max_vals.second) {
+            max_vals.second = p.second;
+        }
+    };
+
+    auto advance_point = [&](point& p, const std::string& path) {
+        for(auto it = path.cbegin(); it != path.cend(); ++it) {
+            move_point(*it, p);
+            update_extents(p);
+        }
+    };
+
+    // advance the root point.
+    advance_point(positions[0], endpoints[0]->content);
+
+    // Invariants
+    // - Each position is at the location after already following those instructions.
+    bool modified = true;
+    while(modified) {
+        modified = false;
+        auto node_it = endpoints.begin();
+        auto pos_it = positions.begin();
+        while(node_it != endpoints.end()) {
+            //std::cout << "Number of endpoints: " << endpoints.size() << std::endl;
+            if((*node_it)->children.size() != 0) {
+                modified = true;
+                if((*node_it)->children.size() == 1) {
+                    // Only a single child.
+                    // Advance to the next node
+                    *node_it = (*node_it)->children[0];
+                    // Move the corresponding position
+                    advance_point(*pos_it, (*node_it)->content);
+                } else {
+                    // Multiple children.
+                    // Save starting position
+                    point start = *pos_it;
+                    // Find the new end position for each child.
+                    std::vector<node*> children = (*node_it)->children;
+                    std::vector<point> new_positions;
+                    for(auto child_it = children.begin(); child_it != children.end(); ++child_it) {
+                        point temp = start;
+                        advance_point(temp, (*child_it)->content);
+                        new_positions.push_back(temp);
+                    }
+                    // Remove the current node and position.
+                    node_it = endpoints.erase(node_it);
+                    pos_it = positions.erase(pos_it);
+                    // Add the new nodes and positions.
+                    node_it = endpoints.insert(node_it, children.begin(), children.end());
+                    pos_it = positions.insert(pos_it, new_positions.begin(), new_positions.end());
+                }
+            } else {
+                // Remove exhausted endpoint
+                std::cout << "Removing an exhausted endpoint (" << pos_it->first << "," << pos_it->second << ")" << std::endl;
+                node_it = endpoints.erase(node_it);
+                pos_it = positions.erase(pos_it);
+            }
+        }
+    }
+
+    return std::pair<point,point>(min_vals,max_vals);
+}
+*/
 
 std::vector<std::vector<node*>> unique_node_paths(node* root) {
     std::vector<std::vector<node*>> answer;
@@ -649,7 +887,18 @@ int main(int argc, char** argv) {
     });
 
     // Count the number of nodes.
-    std::cout << "Number of nodes: " << node_count << std::endl;
+    std::cout << "Number of nodes before prune: " << node_count << std::endl;
+
+    prune_tree(tree_root);
+
+    std::cout << "Prune finished" << std::endl;
+    node_count = 0;
+    visit_nodes(tree_root, [&](node* the_node [[maybe_unused]]){
+        node_count += 1;
+    });
+
+    // Count the number of nodes.
+    std::cout << "Number of nodes after prune: " << node_count << std::endl;
 
     /*
     std::cout << "Nodes in order:" << std::endl;
@@ -659,12 +908,14 @@ int main(int argc, char** argv) {
     });
     */
 
+    /*
     auto new_extents = calculate_path_extents(tree_root);
 
     std::cout << "min_x: " << new_extents.first.first;
     std::cout << " min_y: " << new_extents.first.second;
     std::cout << " max_x: " << new_extents.second.first;
     std::cout << " max_y: " << new_extents.second.second << std::endl;
+    */
 
     throw std::runtime_error("Quitting early to test");
 
