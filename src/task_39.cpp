@@ -90,7 +90,7 @@ class room {
 typedef std::unordered_map<int,room> rmap;
 
 
-void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]]) {
+int build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
     room* root = new room(IDX(0,0));
 
     // Build the room tree
-    build_room_tree(root, room_list, regex_line);
+    build_room_tree(root, room_list, regex_line, 0);
 
     // Find the longest path
     std::cout << "Furthest room is: " << get_max_path(root) << std::endl;
