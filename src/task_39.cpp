@@ -40,8 +40,9 @@ class IDX {
 
 class room {
     public:
-        room(IDX idx) {
+        room(IDX idx, int dist = 0) {
             this->idx = idx;
+            this->_dist = dist;
             north_ptr = nullptr;
             south_ptr = nullptr;
             east_ptr = nullptr;
@@ -49,6 +50,9 @@ class room {
         }
         const IDX& get_idx() const {
             return this->idx;
+        }
+        int dist() const {
+            return this->_dist;
         }
         room* north() const {
             return this->north_ptr;
@@ -76,6 +80,7 @@ class room {
         }
     private:
         IDX idx;
+        int _dist;
         room* north_ptr;
         room* south_ptr;
         room* east_ptr;
