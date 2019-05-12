@@ -89,7 +89,21 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
-    return 0;
+    int furthest = 0;
+    room* dirs[4];
+    dirs[0] = origin->north();
+    dirs[1] = origin->south();
+    dirs[2] = origin->east();
+    dirs[3] = origin->west();
+    for(int i = 0; i < 4; ++i) {
+        if(dirs[i] != nullptr) {
+            int dist = get_max_path(dirs[i])+1;
+            if(dist > furthest) {
+                furthest = dist;
+            }
+        }
+    }
+    return furthest;
 }
 
 int main(int argc, char** argv) {
