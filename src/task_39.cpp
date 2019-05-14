@@ -110,10 +110,10 @@ int get_max_path(room* origin [[maybe_unused]]) {
 
 void destroy_tree(room* root) {
     room* dirs[4];
-    dirs[0] = origin->north();
-    dirs[1] = origin->south();
-    dirs[2] = origin->east();
-    dirs[3] = origin->west();
+    dirs[0] = root->north();
+    dirs[1] = root->south();
+    dirs[2] = root->east();
+    dirs[3] = root->west();
     // Delete children
     for(int i = 0; i < 4; ++i) {
         if(dirs[i] != nullptr) {
