@@ -84,10 +84,80 @@ class room {
         room* west_ptr;
 };
 
-typedef std::unordered_map<int,room> rmap;
+typedef std::unordered_map<int,room*> rmap;
 
 
-int build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
+void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
+    while(true) {
+        // End if at the end of the regex.
+        if((size_t) regex_idx >= regex_line.size()) {
+            break;
+        }
+        if(regex_line[regex_idx] == '^') {
+            // Skip the beginning
+            regex_idx += 1;
+            continue;
+        }
+        if(regex_line[regex_idx] == '$') {
+            // Skip the end
+            regex_idx += 1;
+            continue;
+        }
+        if(regex_line[regex_idx] == '(') {
+            std::set<int> endpoints;
+            regex_idx += 1;
+            build_room_tree(origin, room_list, regex_line, regex_idx);
+        }
+        if(regex_line[regex_idx] == '|') {
+        }
+        if(regex_line[regex_idx] == ')') {
+        }
+        if(regex_line[regex_idx] == 'N') {
+            IDX new_room_idx = origin->get_idx();
+            new_room_idx.second += 1;
+            int new_room_idx_hash = hash(new_room_idx);
+            if(room_list[new_room_idx_hash] == nullptr) {
+                // Need to add a room!
+                room* new_room = new room(new_room_idx, origin->dist()+1);
+                origin->set_north(new_room);
+                new_room->set_parent(origin);
+                // Advance to the new room!
+                origin = new_room;
+                // Advance the character index
+                regex_idx += 1;
+            } else {
+                // Room exists already!
+                room* the_room = room_list[new_room_idx_hash];
+                // Check if we've found a better path!
+                if(origin->dist()+1 < the_room->dist()) {
+                    // We did find a better path!
+                    // We first need to remove the room as a child of the parent.
+                    room* parent = the_room->parent();
+                    if(parent->north() == the_room) {
+                        parent->set_north(nullptr);
+                    } else if (parent->south() == the_room) {
+                        parent->set_south(nullptr);
+                    } else if (parent->east() == the_room) {
+                        parent->set_east(nullptr);
+                    } else if (parent->west() == the_room) {
+                        // This conditional may not be necessary.
+                        parent->set_west(nullptr);
+                    } else {
+                        std::cerr << "This shouldn't happen!" << std::endl;
+                        exit(-1);
+                    }
+                    // Set pointers
+                    the_room->set_parent(origin);
+                    origin->set_north(the_room);
+                } else {
+                    // This is not a strictly better path. Just advance to this room.
+                    origin = the_room;
+                }
+                // Advance the character index
+                regex_idx += 1;
+            }
+        }
+    }
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
