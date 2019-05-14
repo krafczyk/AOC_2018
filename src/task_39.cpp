@@ -29,9 +29,10 @@ inline int hash(IDX& idx) {
 
 class room {
     public:
-        room(IDX idx, int dist = 0) {
+        room(const IDX& idx, int dist = 0) {
             this->idx = idx;
             this->_dist = dist;
+            parent = nullptr;
             north_ptr = nullptr;
             south_ptr = nullptr;
             east_ptr = nullptr;
@@ -67,9 +68,16 @@ class room {
         void set_west(room* rhs) {
             this->west_ptr = rhs;
         }
+        room* parent() const {
+            return this->parent_ptr;
+        }
+        void set_parent(room* rhs) {
+            this->parent_ptr = rhs;
+        }
     private:
         IDX idx;
         int _dist;
+        room* parent_ptr;
         room* north_ptr;
         room* south_ptr;
         room* east_ptr;
