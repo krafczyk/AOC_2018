@@ -32,7 +32,7 @@ class room {
         room(const IDX& idx, int dist = 0) {
             this->idx = idx;
             this->_dist = dist;
-            parent = nullptr;
+            parent_ptr = nullptr;
             north_ptr = nullptr;
             south_ptr = nullptr;
             east_ptr = nullptr;
