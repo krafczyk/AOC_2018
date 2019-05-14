@@ -111,6 +111,22 @@ int get_max_path(room* origin [[maybe_unused]]) {
     return furthest;
 }
 
+void destroy_tree(room* root) {
+    room* dirs[4];
+    dirs[0] = origin->north();
+    dirs[1] = origin->south();
+    dirs[2] = origin->east();
+    dirs[3] = origin->west();
+    // Delete children
+    for(int i = 0; i < 4; ++i) {
+        if(dirs[i] != nullptr) {
+            destroy_tree(dirs[i]);
+        }
+    }
+    // Delete self.
+    delete root;
+}
+
 int main(int argc, char** argv) {
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = handler;
@@ -169,6 +185,9 @@ int main(int argc, char** argv) {
 
     // Find the longest path
     std::cout << "Furthest room is: " << get_max_path(root) << std::endl;
+
+    // Destroy the tree
+    destroy_tree(root);
 
 	return 0;
 }
