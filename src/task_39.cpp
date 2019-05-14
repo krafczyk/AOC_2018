@@ -16,27 +16,16 @@ void handler(int s) {
     exit(1);
 }
 
-class IDX {
-    public:
-        IDX() {
-            this->i = 0;
-            this->j = 0;
-        }
-        IDX(int i, int j) {
-            this->i = i;
-            this->j = j;
-        }
-        int i;
-        int j;
-        int hash() {
-            // Here we use something similar to cantor pairing.
-            // https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
-            unsigned int A = (i >= 0 ? 2*i : -2*i-1);
-            unsigned int B = (j >= 0 ? 2*j : -2*j-1);
-            int C = (int)((A >= B ? A*A+A+B : A+B*B)/2);
-            return ((i < 0 && j < 0) || (i >= 0 && j >= 0) ? C : -C - 1);
-        }
-};
+typedef std::pair<int,int> IDX;
+
+inline int hash(IDX& idx) {
+    // Here we use something similar to cantor pairing.
+    // https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
+    unsigned int A = (idx.first >= 0 ? 2*idx.first : -2*idx.first-1);
+    unsigned int B = (idx.second >= 0 ? 2*idx.second : -2*idx.second-1);
+    int C = (int)((A >= B ? A*A+A+B : A+B*B)/2);
+    return ((idx.first < 0 && idx.second < 0) || (idx.first >= 0 && idx.second >= 0) ? C : -C - 1);
+}
 
 class room {
     public:
