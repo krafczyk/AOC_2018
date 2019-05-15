@@ -86,6 +86,9 @@ class room {
         int dist() const {
             return this->_dist;
         }
+        void set_dist(int dist) {
+            this->_dist = dist;
+        }
         room* neighbor(int direction) const {
             return this->ptr_storage[direction];
         }
