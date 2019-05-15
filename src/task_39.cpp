@@ -101,6 +101,26 @@ typedef std::unordered_map<int,room*> rmap;
 
 
 void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
+
+    auto advance_index = [](const std::string& the_string, int& idx) {
+        int level = 0;
+        while((size_t)idx < the_string.size()) {
+            if(level == 0) {
+                if((the_string[idx] == '|')||(the_string[idx] == ')')) {
+                    break;
+                }
+            }
+            if(the_string[idx] == '(') {
+                level += 1;
+            }
+            if(the_string[idx] == ')') {
+                level -= 1;
+            }
+            idx += 1;
+        }
+    };
+
+
     while(true) {
         // End if at the end of the regex.
         if((size_t) regex_idx >= regex_line.size()) {
@@ -117,13 +137,27 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
             continue;
         }
         if(regex_line[regex_idx] == '(') {
-            std::set<int> endpoints;
-            regex_idx += 1;
-            build_room_tree(origin, room_list, regex_line, regex_idx);
+            // Manage searching of new branches
+            do {
+                regex_idx += 1;
+                build_room_tree(origin, room_list, regex_line, regex_idx);
+                advance_index(regex_line, regex_idx);
+            } while(regex_line[regex_idx] != ')');
+
+            // Started all sub branches from this point. can exit!
+            break;
         }
         if(regex_line[regex_idx] == '|') {
+            // Reached end of current branch section. Should skip until ')' at the current level.
+            while(regex_line[regex_idx] != ')') {
+                regex_idx += 1;
+                advance_index(regex_line, regex_idx);
+            }
         }
         if(regex_line[regex_idx] == ')') {
+            // We should skip this character because we're at the end of a branch section.
+            regex_idx += 1;
+            continue;
         }
         if((regex_line[regex_idx] == 'N')||
            (regex_line[regex_idx] == 'S')||
