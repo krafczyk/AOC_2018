@@ -113,7 +113,7 @@ class room {
 typedef std::unordered_map<int,room*> rmap;
 
 
-void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
+void build_room_tree(room* origin, rmap& room_list, std::string& regex_line, int regex_idx) {
     printf("build_room_tree called with origin %i,%i\n", origin->get_idx().first, origin->get_idx().second);
     IDX original_idx = origin->get_idx();
 
