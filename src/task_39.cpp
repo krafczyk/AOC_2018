@@ -27,6 +27,43 @@ inline int hash(IDX& idx) {
     return ((idx.first < 0 && idx.second < 0) || (idx.first >= 0 && idx.second >= 0) ? C : -C - 1);
 }
 
+const int North = 0;
+const int South = 1;
+const int East = 2;
+const int West = 3;
+const int NumDirs = 4;
+
+std::unordered_map<char,int> dir_map = {
+    {'N', North},
+    {'S', South},
+    {'E', East},
+    {'W', West}
+};
+
+IDX move_in_direction(IDX idx, int direction) {
+    switch (direction) {
+        case North: {
+            idx.second += 1;
+            return idx;
+        }
+        case South: {
+            idx.second -= 1;
+            return idx;
+        }
+        case East: {
+            idx.first += 1;
+            return idx;
+        }
+        case West: {
+            idx.first -= 1;
+            return idx;
+        }
+        default: {
+            return idx;
+        }
+    }
+}
+
 class room {
     public:
         room(const IDX& idx, int dist = 0) {
