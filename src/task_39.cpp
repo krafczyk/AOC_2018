@@ -18,7 +18,7 @@ void handler(int s) {
 
 typedef std::pair<int,int> IDX;
 
-inline int hash(IDX& idx) {
+inline int hash(const IDX& idx) {
     // Here we use something similar to cantor pairing.
     // https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
     unsigned int A = (idx.first >= 0 ? 2*idx.first : -2*idx.first-1);
