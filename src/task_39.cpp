@@ -114,9 +114,6 @@ typedef std::unordered_map<int,room*> rmap;
 
 
 void build_room_tree(room* origin, rmap& room_list, std::string& regex_line, int regex_idx) {
-    printf("build_room_tree called with origin %i,%i\n", origin->get_idx().first, origin->get_idx().second);
-    IDX original_idx = origin->get_idx();
-
     auto advance_index = [](const std::string& the_string, int& idx) {
         int level = 0;
         while((size_t)idx < the_string.size()) {
@@ -222,7 +219,6 @@ void build_room_tree(room* origin, rmap& room_list, std::string& regex_line, int
             exit(-1);
         }
     }
-    printf("End of build call originating at %i,%i\n", original_idx.first, original_idx.second);
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
@@ -328,9 +324,6 @@ int main(int argc, char** argv) {
 
     // Build the room tree
     build_room_tree(root, room_list, regex_line, 0);
-
-    show_tree(root);
-    std::cout << std::endl;
 
     // Find the longest path
     std::cout << "Furthest room is: " << get_max_path(root) << std::endl;
