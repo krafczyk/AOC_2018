@@ -186,6 +186,8 @@ void build_room_tree(room* origin, rmap& room_list, std::string& regex_line, int
                 room* new_room = new room(new_room_idx, origin->dist()+1);
                 origin->set_neighbor(new_room, direction);
                 new_room->set_parent(origin);
+                // Add the new room to the room lit
+                room_list[new_room_idx_hash] = new_room;
                 // Advance to the new room!
                 origin = new_room;
                 // Advance the character index
@@ -206,6 +208,8 @@ void build_room_tree(room* origin, rmap& room_list, std::string& regex_line, int
                     // Set pointers
                     the_room->set_parent(origin);
                     origin->set_neighbor(the_room, direction);
+                    // Set new distance
+                    the_room->set_dist(origin->dist()+1);
                 } else {
                     // This is not a strictly better path. Just advance to this room.
                     origin = the_room;
@@ -319,6 +323,8 @@ int main(int argc, char** argv) {
 
     // Create the root room.
     room* root = new room(IDX(0,0));
+
+    room_list[hash(root->get_idx())] = root;
 
     // Build the room tree
     build_room_tree(root, room_list, regex_line, 0);
