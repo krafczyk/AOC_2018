@@ -40,6 +40,13 @@ std::unordered_map<char,int> dir_map = {
     {'W', West}
 };
 
+std::unordered_map<int, char> map_dir = {
+    {North, 'N'},
+    {South, 'S'},
+    {East, 'E'},
+    {West, 'W'}
+};
+
 IDX move_in_direction(IDX idx, int direction) {
     switch (direction) {
         case North: {
@@ -91,6 +98,9 @@ class room {
         void set_parent(room* rhs) {
             this->ptr_storage[4] = rhs;
         }
+        void show(std::ostream& out) {
+            out << idx.first << "," << idx.second << ":" << _dist;
+        }
     private:
         IDX idx;
         int _dist;
@@ -101,6 +111,8 @@ typedef std::unordered_map<int,room*> rmap;
 
 
 void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unused]], std::string& regex_line [[maybe_unused]], int regex_idx [[maybe_unused]]) {
+    printf("build_room_tree called with origin %i,%i\n", origin->get_idx().first, origin->get_idx().second);
+    IDX original_idx = origin->get_idx();
 
     auto advance_index = [](const std::string& the_string, int& idx) {
         int level = 0;
@@ -203,6 +215,7 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
             exit(-1);
         }
     }
+    printf("End of build call originating at %i,%i\n", original_idx.first, original_idx.second);
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
@@ -227,6 +240,18 @@ void destroy_tree(room* root) {
     }
     // Delete self.
     delete root;
+}
+
+void show_tree(room* root) {
+    root->show(std::cout);
+    std::cout << " ";
+    for(int i = 0; i < NumDirs; ++i) {
+        if(root->neighbor(i) != nullptr) {
+            std::cout << map_dir[i] << ":( ";
+            show_tree(root->neighbor(i));
+            std::cout << " ) ";
+        }
+    }
 }
 
 int main(int argc, char** argv) {
@@ -284,6 +309,9 @@ int main(int argc, char** argv) {
 
     // Build the room tree
     build_room_tree(root, room_list, regex_line, 0);
+
+    show_tree(root);
+    std::cout << std::endl;
 
     // Find the longest path
     std::cout << "Furthest room is: " << get_max_path(root) << std::endl;
