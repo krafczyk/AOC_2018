@@ -69,11 +69,9 @@ class room {
         room(const IDX& idx, int dist = 0) {
             this->idx = idx;
             this->_dist = dist;
-            parent_ptr = nullptr;
-            north_ptr = nullptr;
-            south_ptr = nullptr;
-            east_ptr = nullptr;
-            west_ptr = nullptr;
+            for(int i = 0; i < 5; ++i) {
+                this->ptr_storage[i] = nullptr;
+            }
         }
         const IDX& get_idx() const {
             return this->idx;
@@ -81,44 +79,22 @@ class room {
         int dist() const {
             return this->_dist;
         }
-        room* north() const {
-            return this->north_ptr;
+        room* neighbor(int direction) const {
+            return this->ptr_storage[direction];
         }
-        void set_north(room* rhs) {
-            this->north_ptr = rhs;
-        }
-        room* south() const {
-            return this->south_ptr;
-        }
-        void set_south(room* rhs) {
-            this->south_ptr = rhs;
-        }
-        room* east() const {
-            return this->east_ptr;
-        }
-        void set_east(room* rhs) {
-            this->east_ptr = rhs;
-        }
-        room* west() const {
-            return this->west_ptr;
-        }
-        void set_west(room* rhs) {
-            this->west_ptr = rhs;
+        void set_neighbor(room* rhs, int direction) {
+            this->ptr_storage[direction] = rhs;
         }
         room* parent() const {
-            return this->parent_ptr;
+            return this->ptr_storage[4];
         }
         void set_parent(room* rhs) {
-            this->parent_ptr = rhs;
+            this->ptr_storage[4] = rhs;
         }
     private:
         IDX idx;
         int _dist;
-        room* parent_ptr;
-        room* north_ptr;
-        room* south_ptr;
-        room* east_ptr;
-        room* west_ptr;
+        room* ptr_storage[5];
 };
 
 typedef std::unordered_map<int,room*> rmap;
@@ -149,14 +125,17 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
         }
         if(regex_line[regex_idx] == ')') {
         }
-        if(regex_line[regex_idx] == 'N') {
-            IDX new_room_idx = origin->get_idx();
-            new_room_idx.second += 1;
+        if((regex_line[regex_idx] == 'N')||
+           (regex_line[regex_idx] == 'S')||
+           (regex_line[regex_idx] == 'E')||
+           (regex_line[regex_idx] == 'W')) {
+            int direction = dir_map[regex_line[regex_idx]];
+            IDX new_room_idx = move_in_direction(origin->get_idx(), direction);
             int new_room_idx_hash = hash(new_room_idx);
             if(room_list[new_room_idx_hash] == nullptr) {
                 // Need to add a room!
                 room* new_room = new room(new_room_idx, origin->dist()+1);
-                origin->set_north(new_room);
+                origin->set_neighbor(new_room, direction);
                 new_room->set_parent(origin);
                 // Advance to the new room!
                 origin = new_room;
@@ -170,22 +149,14 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
                     // We did find a better path!
                     // We first need to remove the room as a child of the parent.
                     room* parent = the_room->parent();
-                    if(parent->north() == the_room) {
-                        parent->set_north(nullptr);
-                    } else if (parent->south() == the_room) {
-                        parent->set_south(nullptr);
-                    } else if (parent->east() == the_room) {
-                        parent->set_east(nullptr);
-                    } else if (parent->west() == the_room) {
-                        // This conditional may not be necessary.
-                        parent->set_west(nullptr);
-                    } else {
-                        std::cerr << "This shouldn't happen!" << std::endl;
-                        exit(-1);
+                    for(int i = 0; i < NumDirs; ++i ) {
+                        if(parent->neighbor(i) == the_room) {
+                            parent->set_neighbor(nullptr, i);
+                        }
                     }
                     // Set pointers
                     the_room->set_parent(origin);
-                    origin->set_north(the_room);
+                    origin->set_neighbor(the_room, direction);
                 } else {
                     // This is not a strictly better path. Just advance to this room.
                     origin = the_room;
@@ -193,20 +164,18 @@ void build_room_tree(room* origin [[maybe_unused]], rmap& room_list [[maybe_unus
                 // Advance the character index
                 regex_idx += 1;
             }
+        } else {
+            std::cerr << "Main loop error! don't recognize character!" << std::endl;
+            exit(-1);
         }
     }
 }
 
 int get_max_path(room* origin [[maybe_unused]]) {
     int furthest = 0;
-    room* dirs[4];
-    dirs[0] = origin->north();
-    dirs[1] = origin->south();
-    dirs[2] = origin->east();
-    dirs[3] = origin->west();
-    for(int i = 0; i < 4; ++i) {
-        if(dirs[i] != nullptr) {
-            int dist = get_max_path(dirs[i])+1;
+    for(int i = 0; i < NumDirs; ++i) {
+        if(origin->neighbor(i) != nullptr) {
+            int dist = get_max_path(origin->neighbor(i))+1;
             if(dist > furthest) {
                 furthest = dist;
             }
@@ -216,15 +185,10 @@ int get_max_path(room* origin [[maybe_unused]]) {
 }
 
 void destroy_tree(room* root) {
-    room* dirs[4];
-    dirs[0] = root->north();
-    dirs[1] = root->south();
-    dirs[2] = root->east();
-    dirs[3] = root->west();
     // Delete children
-    for(int i = 0; i < 4; ++i) {
-        if(dirs[i] != nullptr) {
-            destroy_tree(dirs[i]);
+    for(int i = 0; i < NumDirs; ++i) {
+        if(root->neighbor(i) != nullptr) {
+            destroy_tree(root->neighbor(i));
         }
     }
     // Delete self.
