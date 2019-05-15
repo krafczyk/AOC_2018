@@ -257,6 +257,16 @@ void show_tree(room* root) {
     }
 }
 
+int count_rooms(room* root) {
+    int rooms = 1;
+    for(int i = 0; i < NumDirs; ++i) {
+        if(root->neighbor(i) != nullptr) {
+            rooms += count_rooms(root->neighbor(i));
+        }
+    }
+    return rooms;
+}
+
 int main(int argc, char** argv) {
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = handler;
