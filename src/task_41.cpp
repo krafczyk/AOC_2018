@@ -200,7 +200,7 @@ int run_program(int ip, Registers& reg, std::vector<instruction> program, int ma
         instruction& the_inst = program[reg(ip)];
         if(debug) {
             std::cout << n_inst << "| " << reg(ip) << ": ";
-            std::cout << the_inst.name << " " << the_inst.A << " " << the_inst.B << " " << the_inst.C << std::endl;
+            std::cout << the_inst.name << " " << the_inst.A << " " << the_inst.B << " " << the_inst.C << "  ";
         }
         // Execute the instruction
         instructions[the_inst.name](the_inst.A, the_inst.B, the_inst.C, reg);
