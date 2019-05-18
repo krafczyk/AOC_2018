@@ -142,14 +142,19 @@ int main(int argc, char** argv) {
     }
 
     int max_dist = 0;
-    auto comp = [&max_dist](auto& a) {
+    int num_far = 0;
+    auto comp = [&max_dist, &num_far](auto& a) {
         if (a.second.value > max_dist) {
             max_dist = a.second.value;
+        }
+        if (a.second.value >= 1000) {
+            num_far += 1;
         }
     };
     ConstForEach(dist_map, comp);
 
     std::cout << "Max dist room: " << max_dist << std::endl;
+    std::cout << "Num Far rooms: " << num_far << std::endl;
 
 	return 0;
 }
