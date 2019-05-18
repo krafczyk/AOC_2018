@@ -12,7 +12,7 @@
 
 class Registers {
 	public:
-		typedef int Reg_t;
+		typedef long Reg_t;
 		Registers(Reg_t a, Reg_t b, Reg_t c, Reg_t d, Reg_t e, Reg_t f) {
 			this->values[0] = a;
 			this->values[1] = b;
@@ -66,7 +66,7 @@ class Registers {
 		Reg_t values[num_registers];
 };
 
-typedef int Inst_t;
+typedef long Inst_t;
 
 void addr(Inst_t A, Inst_t B, Inst_t C, Registers& in) {
 	in.assign(C) = in(A)+in(B);
