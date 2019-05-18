@@ -264,6 +264,7 @@ int main(int argc, char** argv) {
 
     // Create registers.
     Registers reg;
+    reg.assign(0) = reg_0;
 
     if(max_inst != -1) {
         run_program(ip, reg, program, max_inst, true);
