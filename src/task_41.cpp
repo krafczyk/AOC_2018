@@ -219,10 +219,20 @@ int main(int argc, char** argv) {
 	bool verbose = false;
     int max_inst = -1;
     int reg_0 = 0;
+    int reg_1 = 0;
+    int reg_2 = 0;
+    int reg_3 = 0;
+    int reg_4 = 0;
+    int reg_5 = 0;
 	ArgParse::ArgParser Parser("Task 41");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
     Parser.AddArgument("-mi/--max-inst", "Maximum number of instructions to execute", &max_inst);
-    Parser.AddArgument("-r", "Set initial value of register 0", &reg_0);
+    Parser.AddArgument("-r0", "Set initial value of register 0", &reg_0);
+    Parser.AddArgument("-r1", "Set initial value of register 1", &reg_1);
+    Parser.AddArgument("-r2", "Set initial value of register 2", &reg_2);
+    Parser.AddArgument("-r3", "Set initial value of register 3", &reg_3);
+    Parser.AddArgument("-r4", "Set initial value of register 4", &reg_4);
+    Parser.AddArgument("-r5", "Set initial value of register 5", &reg_5);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -265,6 +275,11 @@ int main(int argc, char** argv) {
     // Create registers.
     Registers reg;
     reg.assign(0) = reg_0;
+    reg.assign(1) = reg_1;
+    reg.assign(2) = reg_2;
+    reg.assign(3) = reg_3;
+    reg.assign(4) = reg_4;
+    reg.assign(5) = reg_5;
 
     if(max_inst != -1) {
         run_program(ip, reg, program, max_inst, true);
