@@ -52,7 +52,10 @@ class Registers {
             std::stringstream ss;
             ss << "[";
             for(size_t idx = 0; idx < num_registers; ++idx) {
-                ss << values[idx] << ", ";
+                ss << values[idx];
+                if(idx != num_registers-1) {
+                    ss << ", ";
+                }
             }
             ss << "]";
             return ss.str();
