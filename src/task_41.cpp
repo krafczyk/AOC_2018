@@ -189,12 +189,24 @@ struct instruction {
     int C;
 };
 
-int run_program(int ip, Registers& reg, std::vector<instruction> program) {
-    while(reg(ip) < (Inst_t) program.size()) {
+int run_program(int ip, Registers& reg, std::vector<instruction> program, int max_inst = -1, bool debug = false) {
+    int n_inst = 0;
+    if(debug) {
+        std::cout << "Initial regs: " << reg.get_str() << std::endl;
+    }
+    while(((max_inst == -1)||(n_inst < max_inst))&&(reg(ip) < (Inst_t) program.size())) {
+        n_inst += 1;
         // Fetch instruction:
         instruction& the_inst = program[reg(ip)];
+        if(debug) {
+            std::cout << n_inst << "| " << reg(ip) << ": ";
+            std::cout << the_inst.name << " " << the_inst.A << " " << the_inst.B << " " << the_inst.C << std::endl;
+        }
         // Execute the instruction
         instructions[the_inst.name](the_inst.A, the_inst.B, the_inst.C, reg);
+        if(debug) {
+            std::cout << reg.get_str() << std::endl;
+        }
         // Increment instruction pointer
         reg.assign(ip) = reg(ip)+1;
     }
@@ -205,8 +217,12 @@ int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+    int max_inst = -1;
+    int reg_0 = 0;
 	ArgParse::ArgParser Parser("Task 41");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
+    Parser.AddArgument("-mi/--max-inst", "Maximum number of instructions to execute", &max_inst);
+    Parser.AddArgument("-r", "Set initial value of register 0", &reg_0);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
@@ -246,10 +262,12 @@ int main(int argc, char** argv) {
         program.push_back(new_instruction);
     }
 
-    std::cout << "Program 1" << std::endl;
     // Create registers.
     Registers reg;
 
-    std::cout << "Result from program 1: " << run_program(ip, reg, program) << std::endl;
+    if(max_inst != -1) {
+        run_program(ip, reg, program, max_inst, true);
+    }
+
 	return 0;
 }
