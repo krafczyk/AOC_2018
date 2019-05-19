@@ -43,26 +43,26 @@ int erosion_level(int x, int y) {
     }
     // Case 1
     if((x == 0)&&(y==0)) {
-        val = (depth)%erosion_factor%3;
+        val = (depth)%erosion_factor;
         return val.value;
     }
     // Case 2
     if((x == target_x)&&(y == target_y)) {
-        val = (depth)%erosion_factor%3;
+        val = (depth)%erosion_factor;
         return val.value;
     }
     // Case 3
     if (y == 0) {
-        val = ((16807*x)+depth)%erosion_factor%3;
+        val = ((16807*x)+depth)%erosion_factor;
         return val.value;
     }
     // Case 4
     if (x == 0) {
-        val = ((48271*y)+depth)%erosion_factor%3;
+        val = ((48271*y)+depth)%erosion_factor;
         return val.value;
     }
     // Case 5
-    val = ((erosion_level(x-1,y)*erosion_level(x,y-1))+depth)%erosion_factor;
+    val = (((erosion_level(x-1,y)*erosion_level(x,y-1))%erosion_factor)+depth)%erosion_factor;
     return val.value;
 }
 
@@ -88,7 +88,6 @@ int main(int argc, char** argv) {
 	// Open input as stream
 	std::ifstream infile(input_filepath);
 
-    int depth;
     infile.ignore(7);
     infile >> depth;
     infile.ignore(8);
@@ -117,7 +116,7 @@ int main(int argc, char** argv) {
                 } else if ((x==target_x)&&(y==target_y)) {
                     std::cout << "T";
                 } else {
-                    std::cout << char_map[erosion_level(x,y)];
+                    std::cout << char_map[erosion_level(x,y)%3];
                 }
             }
             std::cout << std::endl;
@@ -127,7 +126,7 @@ int main(int argc, char** argv) {
     int total_risk = 0;
     for(int x = 0; x <= target_x; ++x) {
         for(int y = 0; y <= target_y; ++y) {
-            total_risk += erosion_level(x,y);
+            total_risk += erosion_level(x,y)%3;
         }
     }
 
