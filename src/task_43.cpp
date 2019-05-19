@@ -13,14 +13,15 @@
 #include "utilities.h"
 
 const int erosion_factor = 20183;
+int depth;
 
-class geo_idx {
+class ero_lev {
     public:
-        geo_idx() {
+        ero_lev() {
             this->value = 0;
             this->set = false;
         }
-        geo_idx& operator=(int new_val) {
+        ero_lev& operator=(int new_val) {
             this->value = new_val;
             this->set = true;
             return *this;
@@ -29,39 +30,39 @@ class geo_idx {
         bool set;
 };
 
-std::unordered_map<int, geo_idx> gmap;
+std::unordered_map<int, ero_lev> emap;
 
 int target_x = 0;
 int target_y = 0;
 
-int geologic_index(int x, int y) {
-    geo_idx& val = gmap[pair_hash(x,y)];
+int erosion_level(int x, int y) {
+    ero_lev& val = emap[pair_hash(x,y)];
     if(val.set) {
         // Already calculated, return it!
         return val.value;
     }
     // Case 1
     if((x == 0)&&(y==0)) {
-        val = 0;
+        val = (depth)%erosion_factor%3;
         return val.value;
     }
     // Case 2
     if((x == target_x)&&(y == target_y)) {
-        val = 0;
+        val = (depth)%erosion_factor%3;
         return val.value;
     }
     // Case 3
     if (y == 0) {
-        val = (16807*x)%erosion_factor;
+        val = ((16807*x)+depth)%erosion_factor%3;
         return val.value;
     }
     // Case 4
     if (x == 0) {
-        val = (48271*y)%erosion_factor;
+        val = ((48271*y)+depth)%erosion_factor%3;
         return val.value;
     }
     // Case 5
-    val = (geologic_index(x-1,y)*geologic_index(x,y-1))%erosion_factor;
+    val = ((erosion_level(x-1,y)*erosion_level(x,y-1))+depth)%erosion_factor;
     return val.value;
 }
 
@@ -116,7 +117,7 @@ int main(int argc, char** argv) {
                 } else if ((x==target_x)&&(y==target_y)) {
                     std::cout << "T";
                 } else {
-                    std::cout << char_map[((geologic_index(x,y)+depth)%erosion_factor)%3];
+                    std::cout << char_map[erosion_level(x,y)];
                 }
             }
             std::cout << std::endl;
@@ -126,7 +127,7 @@ int main(int argc, char** argv) {
     int total_risk = 0;
     for(int x = 0; x <= target_x; ++x) {
         for(int y = 0; y <= target_y; ++y) {
-            total_risk += ((geologic_index(x,y)+depth)%erosion_factor)%3;
+            total_risk += erosion_level(x,y);
         }
     }
 
