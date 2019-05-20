@@ -72,9 +72,28 @@ std::unordered_map<int, map_val> fastest_to_target_neither;
 std::unordered_map<int, map_val> fastest_to_target_torch;
 std::unordered_map<int, map_val> fastest_to_target_gear;
 
+void advance_positions(int& x, int& y, int dir) {
+    if(dir == 0) {
+        // North
+        y -= 1;
+    } else if (dir == 1) {
+        // South
+        y += 1;
+    } else if (dir == 2) {
+        // East
+        x += 1;
+    } else {
+        // West
+        x -= 1;
+    }
+}
+
 int fastest_to_target(int x, int y, bool torch, bool gear) {
     // Detect solid rock wall.
     if((x < 0)||(y < 0)) {
+        return std::numeric_limits<int>::max();
+    }
+    if((x > extra_x)||(y > extra_y)) {
         return std::numeric_limits<int>::max();
     }
     map_val* pval;
@@ -84,20 +103,139 @@ int fastest_to_target(int x, int y, bool torch, bool gear) {
         if(pval->set) {
             return pval->value;
         }
+        if((x == target_x)&&(y == target_y)) {
+            // We've arrived!
+            return 0;
+        }
+        std::vector<int> dists;
+        for(int d = 0; d < 4; ++d) {
+            if(d == 0) {
+                // Skip north..
+                continue;
+            }
+            if(d == 4) {
+                // Skip west..
+                continue;
+            }
+            int nx = x;
+            int ny = y;
+            advance_positions(nx, ny, d);
+            int neighbor_type = erosion_level(nx, ny)%3;
+            if(neighbor_type == 0) {
+                // Rock
+                // Don't change equipment
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1);
+                // Change to gear
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
+            } else if (neighbor_type == 1) {
+                // Wet
+                // Change to gear
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
+                // Change to neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
+            } else {
+                // Narrow
+                // Don't change equipment
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1);
+                // Change to neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
+            }
+        }
+        *pval = *std::min_element(dists.begin(), dists.end());
+        return pval->value;
     } else if (gear) {
         // We have the climbing gear currently equipped.
         pval = &(fastest_to_target_gear[pair_hash(x,y)]);
         if(pval->set) {
             return pval->value;
         }
+        if((x == target_x)&&(y == target_y)) {
+            // We need to change gears
+            return 7;
+        }
+        std::vector<int> dists;
+        for(int d = 0; d < 4; ++d) {
+            if(d == 0) {
+                // Skip north..
+                continue;
+            }
+            if(d == 4) {
+                // Skip west..
+                continue;
+            }
+            int nx = x;
+            int ny = y;
+            advance_positions(nx, ny, d);
+            int neighbor_type = erosion_level(nx, ny)%3;
+            if(neighbor_type == 0) {
+                // Rock
+                // Change to torch
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
+                // Don't change equipment
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1);
+            } else if (neighbor_type == 1) {
+                // Wet
+                // Don't change equipment
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1);
+                // Change to neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
+            } else {
+                // Narrow
+                // Change to torch
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
+                // Change to neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
+            }
+        }
+        *pval = *std::min_element(dists.begin(), dists.end());
+        return pval->value;
     } else {
         // We have no gear currently equipped.
         pval = &(fastest_to_target_neither[pair_hash(x,y)]);
         if(pval->set) {
             return pval->value;
         }
+        if((x == target_x)&&(y == target_y)) {
+            // We need to change gears
+            return 7;
+        }
+        std::vector<int> dists;
+        for(int d = 0; d < 4; ++d) {
+            if(d == 0) {
+                // Skip north..
+                continue;
+            }
+            if(d == 4) {
+                // Skip west..
+                continue;
+            }
+            int nx = x;
+            int ny = y;
+            advance_positions(nx, ny, d);
+            int neighbor_type = erosion_level(nx, ny)%3;
+            if(neighbor_type == 0) {
+                // Rock
+                // Change to torch
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
+                // Change to gear
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
+            } else if (neighbor_type == 1) {
+                // Wet
+                // Change to gear
+                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
+                // Proceed with neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1);
+            } else {
+                // Narrow
+                // Change to torch
+                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
+                // Proceed with neither
+                dists.push_back(fastest_to_target(nx, ny, false, false)+1);
+            }
+        }
+        *pval = *std::min_element(dists.begin(), dists.end());
+        return pval->value;
     }
-    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -108,8 +246,6 @@ int main(int argc, char** argv) {
 	ArgParse::ArgParser Parser("Task 44");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
-    Parser.AddArgument("-ex", "Extra distance to search in x direction", &extra_x);
-    Parser.AddArgument("-ey", "Extra distance to search in y direction", &extra_y);
     Parser.AddArgument("-m/--map", "Print map", &Map);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
