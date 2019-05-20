@@ -93,9 +93,9 @@ class priority_queue {
             return false;
         }
         T pop() {
-            T answer = the_queue.back;
+            std::pair<Value,T> answer = the_queue.back();
             the_queue.pop_back();
-            return answer;
+            return answer.second;
         }
     private:
         class Compare {
@@ -107,27 +107,93 @@ class priority_queue {
         std::vector<std::pair<Value,T>> the_queue;
 };
 
+namespace tools {
+    static const long neither = 0;
+    static const long torch = 1;
+    static const long gear = 2;
+    static const long num = 3;
+}
+
+namespace terrain {
+    static const long rocky = 0;
+    static const long wet = 1;
+    static const long narrow = 2;
+}
+
+namespace dirs {
+    static const int North = 0;
+    static const int South = 1;
+    static const int East = 2;
+    static const int West = 3;
+    static const int num = 4;
+}
+
+bool is_tool_appropriate(const long terr, const long tool) {
+    if(terr == terrain::rocky) {
+        if ((tool == tools::torch)||(tool == tools::gear)) {
+            return true;
+        } else {
+            return false;
+        }
+    } else if (terr == terrain::wet) {
+        if ((tool == tools::gear)||(tool == tools::neither)) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        if ((tool == tools::torch)||(tool == tools::neither)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
 class node {
     public:
-        node(long x, long y, long mode) {
+        node(long x, long y, long tool) {
             this->x = x;
             this->y = y;
-            this->mode = mode;
+            this->tool = tool;
         }
-        static const long neither = 0;
-        static const long torch = 1;
-        static const long gear = 2;
+        node(const node& rhs) {
+            this->x = rhs.x;
+            this->y = rhs.y;
+            this->tool = rhs.tool;
+        }
+        node& operator=(const node& rhs) {
+            this->x = rhs.x;
+            this->y = rhs.y;
+            this->tool = rhs.tool;
+            return *this;
+        }
         long x;
         long y;
-        long mode;
+        long tool;
         long dist_estimate(const node& rhs) const {
             long est = std::abs(this->x-rhs.x)+std::abs(this->y-rhs.y);
-            if(rhs.mode != this->mode) {
+            if(rhs.tool != this->tool) {
                 est += 7;
             }
             return est;
         }
+        long hash() const {
+            return pair_hash_l(pair_hash_l(x,y),tool);
+        }
 };
+
+void move_in_direction(long& x, long& y, int d) {
+    if (d == dirs::North) {
+        y -= 1;
+    } else if (d == dirs::South) {
+        y += 1;
+    } else if (d == dirs::East) {
+        x += 1;
+    } else if (d == dirs::West) {
+        x -= 1;
+    }
+}
 
 int main(int argc, char** argv) {
 	// Parse Arguments
@@ -192,11 +258,60 @@ int main(int argc, char** argv) {
     }
 
     priority_queue<long,node> queue;
-    node target(target_x, target_y, node::torch);
-    node start(0,0,node::torch);
+    node target(target_x, target_y, tools::torch);
+    long target_hash = target.hash();
+
+    node start(0,0,tools::torch);
     queue.insert(start.dist_estimate(target),start);
 
-    //std::cout << "fastest_route: " << fastest_to_target(0, 0, true, false) << std::endl;
+    std::unordered_map<long,map_val> min_dists;
+    min_dists[start.hash()] = 0;
+
+    while((queue.size() != 0)||(min_dists[target_hash].set)) {
+        // Pop a node off the queue
+        node current_node = queue.pop();
+        // Move directly to neighbors.
+        for(int d = 0; d < dirs::num; ++d) {
+            long nx = current_node.x;
+            long ny = current_node.y;
+            // Move x,y position
+            move_in_direction(nx, ny, d);
+            // Test that we're in the allowed region.
+            if((nx < 0)||(ny < 0)) {
+                // Skip if not.
+                continue;
+            }
+            // check that our current tool is appropriate
+            if(is_tool_appropriate(erosion_level(nx, ny)%3, current_node.tool)) {
+                // Create neighbor node.
+                node neighbor(nx,ny,current_node.tool);
+                if (!min_dists[neighbor.hash()].set) {
+                    // Haven't encountered this node yet!
+                    // one minute to traverse.
+                    min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+1;
+                    // Add the new neighbor in the queue
+                    queue.insert(min_dists[neighbor.hash()].value, neighbor);
+                }
+            }
+        }
+        // Change tool
+        for(int tool = 0; tool < tools::num; ++tool) {
+            if(tool != current_node.tool) {
+                if(is_tool_appropriate(erosion_level(current_node.x,current_node.y)%3, tool)) {
+                    node neighbor(current_node.x, current_node.y, tool);
+                    if(!min_dists[neighbor.hash()].set) {
+                        // Haven't encountered this node yet!
+                        // seven minutes to traverse.
+                        min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+7;
+                        // Add the new neighbor to the queue
+                        queue.insert(min_dists[neighbor.hash()].value, neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << "fastest_route: " << min_dists[target_hash].value << std::endl;
 
 	return 0;
 }
