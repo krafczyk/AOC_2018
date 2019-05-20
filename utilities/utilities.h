@@ -127,6 +127,58 @@ class array_2d {
         }
 };
 
+template<typename T>
+class array_3d {
+    public:
+        array_3d(size_t nx=0, size_t ny=0, size_t nz = 0) {
+            this->nx = nx;
+            this->ny = ny;
+            this->nz = nz;
+            initialize_internal();
+        }
+        ~array_3d() {
+            if(array != nullptr) {
+                delete [] array;
+            }
+        }
+        void init(size_t nx, size_t ny, size_t nz) {
+            this->nx = nx;
+            this->ny = ny;
+            this->nz = nz;
+            initialize_internal();
+        }
+        T& assign(size_t i, size_t j, size_t k) {
+            return this->array[k*nx*ny+j*nx+i];
+        }
+        T operator()(size_t i, size_t j, size_t k) const {
+            return this->array[k*nx*ny+j*nx+i];
+        }
+        void print(std::ostream& out) const {
+            for(size_t k = 0; k < nz; ++k) {
+                for(size_t j = 0; j < ny; ++j) {
+                    for(size_t i = 0; i < nx; ++i) {
+                        out << (*this)(i,j);
+                    }
+                    out << std::endl;
+                }
+                out << std::endl;
+            }
+        }
+    private:
+        size_t nx;
+        size_t ny;
+        size_t nz;
+        T* array;
+
+        void initialize_internal() {
+            if((this->nx == 0)||(this->ny == 0)||(this->nz == 0)) {
+                array = nullptr;
+            } else {
+                array = new T[nx*ny*nz];
+            }
+        }
+};
+
 int pair_hash(int x, int y) {
     // Here we use something similar to cantor pairing.
     // https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
