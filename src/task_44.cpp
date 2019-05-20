@@ -68,6 +68,67 @@ long erosion_level(long x, long y) {
     return val.value;
 }
 
+template<typename Value,typename T>
+class priority_queue {
+    public:
+        priority_queue() {
+        }
+        void insert(const Value& v, const T& item) {
+            // Find where to insert
+            auto it = the_queue.begin();
+            while((it != the_queue.end())&&(it->first > v)) {
+                ++it;
+            }
+            the_queue.insert(it, std::pair<Value,T>(v,item));
+        }
+        size_t size() const {
+            return the_queue.size();
+        }
+        bool hasElement(const T& item) const {
+            for(auto it=the_queue.begin(); it != the_queue.end(); ++it) {
+                if(it->second == item) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        T pop() {
+            T answer = the_queue.back;
+            the_queue.pop_back();
+            return answer;
+        }
+    private:
+        class Compare {
+            public:
+                bool operator()(const std::pair<Value,T>& a, const std::pair<Value,T>& b) const {
+                    return (a.first < b.first);
+                }
+        };
+        std::vector<std::pair<Value,T>> the_queue;
+};
+
+class node {
+    public:
+        node(long x, long y, long mode) {
+            this->x = x;
+            this->y = y;
+            this->mode = mode;
+        }
+        static const long neither = 0;
+        static const long torch = 1;
+        static const long gear = 2;
+        long x;
+        long y;
+        long mode;
+        long dist_estimate(const node& rhs) const {
+            long est = std::abs(this->x-rhs.x)+std::abs(this->y-rhs.y);
+            if(rhs.mode != this->mode) {
+                est += 7;
+            }
+            return est;
+        }
+};
+
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
@@ -129,6 +190,11 @@ int main(int argc, char** argv) {
             std::cout << std::endl;
         }
     }
+
+    priority_queue<long,node> queue;
+    node target(target_x, target_y, node::torch);
+    node start(0,0,node::torch);
+    queue.insert(start.dist_estimate(target),start);
 
     //std::cout << "fastest_route: " << fastest_to_target(0, 0, true, false) << std::endl;
 
