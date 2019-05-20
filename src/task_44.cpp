@@ -30,7 +30,7 @@ class map_val {
         bool set;
 };
 
-array_2d<map_val> emap;
+std::unordered_map<long,map_val> emap;
 
 long target_x = 0;
 long target_y = 0;
@@ -38,7 +38,7 @@ long extra_x = 0;
 long extra_y = 0;
 
 long erosion_level(long x, long y) {
-    map_val& val = emap.assign(x,y);
+    map_val& val = emap[pair_hash_l(x,y)];
     if(val.set) {
         // Already calculated, return it!
         return val.value;
@@ -108,8 +108,6 @@ int main(int argc, char** argv) {
         std::cout << "target: " << target_x << "," << target_y << std::endl;
         std::cout << "extra: " << extra_x << "," << extra_y << std::endl;
     }
-
-    emap.init(target_x+extra_x,target_y+extra_y);
 
     std::unordered_map<int, char> char_map = {
         { 0, '.' },
