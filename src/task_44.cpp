@@ -12,8 +12,8 @@
 #include "ArgParseStandalone.h"
 #include "utilities.h"
 
-const int erosion_factor = 20183;
-int depth;
+const long erosion_factor = 20183;
+long depth;
 
 class map_val {
     public:
@@ -30,15 +30,15 @@ class map_val {
         bool set;
 };
 
-std::unordered_map<int, map_val> emap;
+array_2d<map_val> emap;
 
-int target_x = 0;
-int target_y = 0;
-int extra_x = 0;
-int extra_y = 0;
+long target_x = 0;
+long target_y = 0;
+long extra_x = 0;
+long extra_y = 0;
 
-int erosion_level(int x, int y) {
-    map_val& val = emap[pair_hash(x,y)];
+long erosion_level(long x, long y) {
+    map_val& val = emap.assign(x,y);
     if(val.set) {
         // Already calculated, return it!
         return val.value;
@@ -66,176 +66,6 @@ int erosion_level(int x, int y) {
     // Case 5
     val = (((erosion_level(x-1,y)*erosion_level(x,y-1))%erosion_factor)+depth)%erosion_factor;
     return val.value;
-}
-
-std::unordered_map<int, map_val> fastest_to_target_neither;
-std::unordered_map<int, map_val> fastest_to_target_torch;
-std::unordered_map<int, map_val> fastest_to_target_gear;
-
-void advance_positions(int& x, int& y, int dir) {
-    if(dir == 0) {
-        // North
-        y -= 1;
-    } else if (dir == 1) {
-        // South
-        y += 1;
-    } else if (dir == 2) {
-        // East
-        x += 1;
-    } else {
-        // West
-        x -= 1;
-    }
-}
-
-int fastest_to_target(int x, int y, bool torch, bool gear) {
-    // Detect solid rock wall.
-    if((x < 0)||(y < 0)) {
-        return std::numeric_limits<int>::max();
-    }
-    if((x > extra_x)||(y > extra_y)) {
-        return std::numeric_limits<int>::max();
-    }
-    map_val* pval;
-    if(torch) {
-        // We have the torch currently equipped.
-        pval = &(fastest_to_target_torch[pair_hash(x,y)]);
-        if(pval->set) {
-            return pval->value;
-        }
-        if((x == target_x)&&(y == target_y)) {
-            // We've arrived!
-            return 0;
-        }
-        std::vector<int> dists;
-        for(int d = 0; d < 4; ++d) {
-            if(d == 0) {
-                // Skip north..
-                continue;
-            }
-            if(d == 4) {
-                // Skip west..
-                continue;
-            }
-            int nx = x;
-            int ny = y;
-            advance_positions(nx, ny, d);
-            int neighbor_type = erosion_level(nx, ny)%3;
-            if(neighbor_type == 0) {
-                // Rock
-                // Don't change equipment
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1);
-                // Change to gear
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
-            } else if (neighbor_type == 1) {
-                // Wet
-                // Change to gear
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
-                // Change to neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
-            } else {
-                // Narrow
-                // Don't change equipment
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1);
-                // Change to neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
-            }
-        }
-        *pval = *std::min_element(dists.begin(), dists.end());
-        return pval->value;
-    } else if (gear) {
-        // We have the climbing gear currently equipped.
-        pval = &(fastest_to_target_gear[pair_hash(x,y)]);
-        if(pval->set) {
-            return pval->value;
-        }
-        if((x == target_x)&&(y == target_y)) {
-            // We need to change gears
-            return 7;
-        }
-        std::vector<int> dists;
-        for(int d = 0; d < 4; ++d) {
-            if(d == 0) {
-                // Skip north..
-                continue;
-            }
-            if(d == 4) {
-                // Skip west..
-                continue;
-            }
-            int nx = x;
-            int ny = y;
-            advance_positions(nx, ny, d);
-            int neighbor_type = erosion_level(nx, ny)%3;
-            if(neighbor_type == 0) {
-                // Rock
-                // Change to torch
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
-                // Don't change equipment
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1);
-            } else if (neighbor_type == 1) {
-                // Wet
-                // Don't change equipment
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1);
-                // Change to neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
-            } else {
-                // Narrow
-                // Change to torch
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
-                // Change to neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1+7);
-            }
-        }
-        *pval = *std::min_element(dists.begin(), dists.end());
-        return pval->value;
-    } else {
-        // We have no gear currently equipped.
-        pval = &(fastest_to_target_neither[pair_hash(x,y)]);
-        if(pval->set) {
-            return pval->value;
-        }
-        if((x == target_x)&&(y == target_y)) {
-            // We need to change gears
-            return 7;
-        }
-        std::vector<int> dists;
-        for(int d = 0; d < 4; ++d) {
-            if(d == 0) {
-                // Skip north..
-                continue;
-            }
-            if(d == 4) {
-                // Skip west..
-                continue;
-            }
-            int nx = x;
-            int ny = y;
-            advance_positions(nx, ny, d);
-            int neighbor_type = erosion_level(nx, ny)%3;
-            if(neighbor_type == 0) {
-                // Rock
-                // Change to torch
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
-                // Change to gear
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
-            } else if (neighbor_type == 1) {
-                // Wet
-                // Change to gear
-                dists.push_back(fastest_to_target(nx, ny, false, true)+1+7);
-                // Proceed with neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1);
-            } else {
-                // Narrow
-                // Change to torch
-                dists.push_back(fastest_to_target(nx, ny, true, false)+1+7);
-                // Proceed with neither
-                dists.push_back(fastest_to_target(nx, ny, false, false)+1);
-            }
-        }
-        *pval = *std::min_element(dists.begin(), dists.end());
-        return pval->value;
-    }
 }
 
 int main(int argc, char** argv) {
@@ -279,6 +109,8 @@ int main(int argc, char** argv) {
         std::cout << "extra: " << extra_x << "," << extra_y << std::endl;
     }
 
+    emap.init(target_x+extra_x,target_y+extra_y);
+
     std::unordered_map<int, char> char_map = {
         { 0, '.' },
         { 1, '=' },
@@ -300,7 +132,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::cout << "fastest_route: " << fastest_to_target(0, 0, true, false) << std::endl;
+    //std::cout << "fastest_route: " << fastest_to_target(0, 0, true, false) << std::endl;
 
 	return 0;
 }
