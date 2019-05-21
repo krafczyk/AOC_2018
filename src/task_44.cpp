@@ -206,9 +206,11 @@ int main(int argc, char** argv) {
 	bool verbose = false;
     bool Map = false;
 	ArgParse::ArgParser Parser("Task 44");
+    int max = -1;
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
     Parser.AddArgument("-m/--map", "Print map", &Map);
+    Parser.AddArgument("-mc/--max-counter", "Set the max counter", &max);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
 		std::cerr << "Problem parsing arguments!" << std::endl;
@@ -273,7 +275,6 @@ int main(int argc, char** argv) {
     min_dists[start.hash()] = 0;
 
     int counter = 0;
-    int max = 400;
     while((queue.size() != 0)&&(!min_dists[target_hash].set)) {
         std::cout << "Queue diagnostic" << std::endl;
         queue.for_each([](auto& a) {
@@ -336,13 +337,18 @@ int main(int argc, char** argv) {
         });
         // Sort queue
         queue.sort();
-        if (counter > max) {
+        // Update weights and sort queue.
+        if ((counter != -1)&&(counter > max)) {
             break;
         }
         counter += 1;
     }
 
-    std::cout << "fastest_route: " << min_dists[target_hash].value << std::endl;
+    if(min_dists[target_hash].set) {
+        std::cout << "fastest_route: " << min_dists[target_hash].value << std::endl;
+    } else {
+        std::cout << "target not reached." << std::endl;
+    }
 
 	return 0;
 }
