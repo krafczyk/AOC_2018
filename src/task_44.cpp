@@ -97,18 +97,18 @@ class priority_queue {
             the_queue.pop_back();
             return answer.second;
         }
-        void run_func(auto f) {
+        template<class functor>
+        void run_func(functor f) {
             for(auto it = the_queue.begin(); it != the_queue.end(); ++it) {
                 f(*it);
             }
         }
+        void sort() {
+            std::sort(the_queue.begin(), the_queue.end(), [](auto a, auto b) {
+                return (a < b);
+            });
+        }
     private:
-        class Compare {
-            public:
-                bool operator()(const std::pair<Value,T>& a, const std::pair<Value,T>& b) const {
-                    return (a.first < b.first);
-                }
-        };
         std::vector<std::pair<Value,T>> the_queue;
 };
 
