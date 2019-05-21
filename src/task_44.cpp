@@ -97,6 +97,11 @@ class priority_queue {
             the_queue.pop_back();
             return answer.second;
         }
+        void run_func(auto f) {
+            for(auto it = the_queue.begin(); it != the_queue.end(); ++it) {
+                f(*it);
+            }
+        }
     private:
         class Compare {
             public:
@@ -267,7 +272,13 @@ int main(int argc, char** argv) {
     std::unordered_map<long,map_val> min_dists;
     min_dists[start.hash()] = 0;
 
-    while((queue.size() != 0)||(min_dists[target_hash].set)) {
+    int counter = 0;
+    int max = 400;
+    while((queue.size() != 0)&&(!min_dists[target_hash].set)) {
+        std::cout << "Queue diagnostic" << std::endl;
+        queue.run_func([](auto& a) {
+            std::cout << a.first << ": " << a.second.x << "," << a.second.y << "," << a.second.tool << std::endl;
+        });
         // Pop a node off the queue
         node current_node = queue.pop();
         // Move directly to neighbors.
@@ -290,7 +301,7 @@ int main(int argc, char** argv) {
                     // one minute to traverse.
                     min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+1;
                     // Add the new neighbor in the queue
-                    queue.insert(min_dists[neighbor.hash()].value, neighbor);
+                    queue.insert(min_dists[neighbor.hash()].value+neighbor.dist_estimate(target), neighbor);
                 }
             }
         }
@@ -304,11 +315,15 @@ int main(int argc, char** argv) {
                         // seven minutes to traverse.
                         min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+7;
                         // Add the new neighbor to the queue
-                        queue.insert(min_dists[neighbor.hash()].value, neighbor);
+                        queue.insert(min_dists[neighbor.hash()].value+neighbor.dist_estimate(target), neighbor);
                     }
                 }
             }
         }
+        if (counter > max) {
+            break;
+        }
+        counter += 1;
     }
 
     std::cout << "fastest_route: " << min_dists[target_hash].value << std::endl;
