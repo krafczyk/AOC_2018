@@ -76,15 +76,17 @@ int main(int argc, char** argv) {
     int y = 0;
     int z = 0;
     int r = 0;
-    while(!infile.eof()) {
-        infile.ignore(5);
-        infile >> x;
-        infile.ignore(1);
-        infile >> y;
-        infile.ignore(1);
-        infile >> z;
-        infile.ignore(5);
-        infile >> r;
+    std::string line;
+    while(std::getline(infile, line)) {
+        std::istringstream iss(line);
+        iss.ignore(5);
+        iss >> x;
+        iss.ignore(1);
+        iss >> y;
+        iss.ignore(1);
+        iss >> z;
+        iss.ignore(5);
+        iss >> r;
         bots.push_back(bot(x,y,z,r));
     }
 
