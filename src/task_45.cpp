@@ -96,5 +96,22 @@ int main(int argc, char** argv) {
         });
     }
 
+    auto strongest_bot_it = bots.begin();
+    auto it = strongest_bot_it+1;
+    while(it != bots.end()) {
+        if(it->r > strongest_bot_it->r) {
+            strongest_bot_it = it;
+        }
+        ++it;
+    }
+    int num_bots = 0;
+    for(it = bots.begin(); it != bots.end(); ++it) {
+        if(strongest_bot_it->dist(*it) <= strongest_bot_it->r) {
+            num_bots += 1;
+        }
+    }
+
+    std::cout << "There are " << num_bots << " within range of the strongest bot." << std::endl;
+
 	return 0;
 }
