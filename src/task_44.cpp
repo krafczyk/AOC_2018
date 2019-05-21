@@ -105,7 +105,7 @@ class priority_queue {
         }
         void sort() {
             std::sort(the_queue.begin(), the_queue.end(), [](auto a, auto b) {
-                return (a < b);
+                return (a.first > b.first);
             });
         }
     private:
