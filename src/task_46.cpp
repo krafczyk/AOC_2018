@@ -11,7 +11,8 @@
 
 class bot {
     public:
-        bot(int x, int y, int z, int r) {
+        typedef long type;
+        bot(type x, type y, type z, type r) {
             this->x = x;
             this->y = y;
             this->z = z;
@@ -44,10 +45,10 @@ class bot {
             std::cout << this->z << ">, r=";
             std::cout << this->r << std::endl;
         }
-        int x;
-        int y;
-        int z;
-        int r;
+        bot::type x;
+        bot::type y;
+        bot::type z;
+        bot::type r;
 };
 
 int main(int argc, char** argv) {
@@ -72,10 +73,10 @@ int main(int argc, char** argv) {
 
     std::vector<bot> bots;
 
-    int x = 0;
-    int y = 0;
-    int z = 0;
-    int r = 0;
+    bot::type x = 0;
+    bot::type y = 0;
+    bot::type z = 0;
+    bot::type r = 0;
     std::string line;
     while(std::getline(infile, line)) {
         std::istringstream iss(line);
@@ -91,27 +92,52 @@ int main(int argc, char** argv) {
     }
 
     if(verbose) {
-        std::for_each(bots.begin(), bots.end(), [](const bot& a) {
-            a.show();
-        });
+        std::cout << "There are " << bots.size() << " total bots." << std::endl;
     }
 
-    auto strongest_bot_it = bots.begin();
-    auto it = strongest_bot_it+1;
-    while(it != bots.end()) {
-        if(it->r > strongest_bot_it->r) {
-            strongest_bot_it = it;
+    // Find extent.
+    bot::type min_x = std::numeric_limits<bot::type>::max();
+    bot::type max_x = std::numeric_limits<bot::type>::min();
+    bot::type min_y = std::numeric_limits<bot::type>::max();
+    bot::type max_y = std::numeric_limits<bot::type>::min();
+    bot::type min_z = std::numeric_limits<bot::type>::max();
+    bot::type max_z = std::numeric_limits<bot::type>::min();
+    bot::type min_r = std::numeric_limits<bot::type>::max();
+    bot::type max_r = std::numeric_limits<bot::type>::min();
+ 
+    std::for_each(bots.begin(), bots.end(), [&](const bot& b) {
+        if(b.x < min_x) {
+            min_x = b.x;
         }
-        ++it;
-    }
-    int num_bots = 0;
-    for(it = bots.begin(); it != bots.end(); ++it) {
-        if(strongest_bot_it->dist(*it) <= strongest_bot_it->r) {
-            num_bots += 1;
+        if(b.x > max_x) {
+            max_x = b.x;
         }
-    }
+        if(b.y < min_y) {
+            min_y = b.y;
+        }
+        if(b.y > max_y) {
+            max_y = b.y;
+        }
+        if(b.z < min_z) {
+            min_z = b.z;
+        }
+        if(b.z > max_z) {
+            max_z = b.z;
+        }
+        if(b.r < min_r) {
+            min_r = b.r;
+        }
+        if(b.r > max_r) {
+            max_r = b.r;
+        }
+    });
 
-    std::cout << "There are " << num_bots << " within range of the strongest bot." << std::endl;
+    if(verbose) {
+        std::cout << "X range: [" << min_x << "," << max_x << "]" << std::endl;
+        std::cout << "Y range: [" << min_y << "," << max_y << "]" << std::endl;
+        std::cout << "Z range: [" << min_z << "," << max_z << "]" << std::endl;
+        std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
+    }
 
 	return 0;
 }
