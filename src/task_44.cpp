@@ -276,10 +276,12 @@ int main(int argc, char** argv) {
 
     int counter = 0;
     while((queue.size() != 0)&&(!min_dists[target_hash].set)) {
-        std::cout << "Queue diagnostic" << std::endl;
-        queue.for_each([](auto& a) {
-            std::cout << a.second.x << "," << a.second.y << "," << a.second.tool << ": " << a.first << std::endl;
-        });
+        if(verbose) {
+            std::cout << "Queue diagnostic" << std::endl;
+            queue.for_each([](auto& a) {
+                std::cout << a.second.x << "," << a.second.y << "," << a.second.tool << ": " << a.first << std::endl;
+            });
+        }
         // Pop a node off the queue
         node current_node = queue.pop();
         // Move directly to neighbors.
@@ -338,7 +340,7 @@ int main(int argc, char** argv) {
         // Sort queue
         queue.sort();
         // Update weights and sort queue.
-        if ((counter != -1)&&(counter > max)) {
+        if ((max != -1)&&(counter > max)) {
             break;
         }
         counter += 1;
