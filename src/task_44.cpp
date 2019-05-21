@@ -98,7 +98,7 @@ class priority_queue {
             return answer.second;
         }
         template<class functor>
-        void run_func(functor f) {
+        void for_each(functor f) {
             for(auto it = the_queue.begin(); it != the_queue.end(); ++it) {
                 f(*it);
             }
@@ -276,8 +276,8 @@ int main(int argc, char** argv) {
     int max = 400;
     while((queue.size() != 0)&&(!min_dists[target_hash].set)) {
         std::cout << "Queue diagnostic" << std::endl;
-        queue.run_func([](auto& a) {
-            std::cout << a.first << ": " << a.second.x << "," << a.second.y << "," << a.second.tool << std::endl;
+        queue.for_each([](auto& a) {
+            std::cout << a.second.x << "," << a.second.y << "," << a.second.tool << ": " << a.first << std::endl;
         });
         // Pop a node off the queue
         node current_node = queue.pop();
@@ -330,6 +330,11 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        // Update queue values
+        queue.for_each([&min_dists,&target](auto& a) {
+            a.first = min_dists[a.second.hash()].value+a.second.dist_estimate(target);
+        });
+        // Sort queue
         queue.sort();
         if (counter > max) {
             break;
