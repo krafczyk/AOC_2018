@@ -330,6 +330,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        queue.sort();
         if (counter > max) {
             break;
         }
