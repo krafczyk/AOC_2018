@@ -296,12 +296,17 @@ int main(int argc, char** argv) {
             if(is_tool_appropriate(erosion_level(nx, ny)%3, current_node.tool)) {
                 // Create neighbor node.
                 node neighbor(nx,ny,current_node.tool);
+                long dist = min_dists[current_node.hash()].value+1;
                 if (!min_dists[neighbor.hash()].set) {
                     // Haven't encountered this node yet!
                     // one minute to traverse.
-                    min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+1;
+                    min_dists[neighbor.hash()] = dist;
                     // Add the new neighbor in the queue
                     queue.insert(min_dists[neighbor.hash()].value+neighbor.dist_estimate(target), neighbor);
+                } else {
+                    if(dist < min_dists[neighbor.hash()].value) {
+                        min_dists[neighbor.hash()] = dist;
+                    }
                 }
             }
         }
@@ -310,12 +315,17 @@ int main(int argc, char** argv) {
             if(tool != current_node.tool) {
                 if(is_tool_appropriate(erosion_level(current_node.x,current_node.y)%3, tool)) {
                     node neighbor(current_node.x, current_node.y, tool);
+                    long dist = min_dists[current_node.hash()].value+7;
                     if(!min_dists[neighbor.hash()].set) {
                         // Haven't encountered this node yet!
                         // seven minutes to traverse.
-                        min_dists[neighbor.hash()] = min_dists[current_node.hash()].value+7;
+                        min_dists[neighbor.hash()] = dist;
                         // Add the new neighbor to the queue
                         queue.insert(min_dists[neighbor.hash()].value+neighbor.dist_estimate(target), neighbor);
+                    } else {
+                        if(dist < min_dists[neighbor.hash()].value) {
+                            min_dists[neighbor.hash()] = dist;
+                        }
                     }
                 }
             }
