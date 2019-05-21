@@ -1,0 +1,2 @@
+The Area of a 2d sphere determined by manhattan distance of radius r is:
+A = 2*(r^2+r)+1
