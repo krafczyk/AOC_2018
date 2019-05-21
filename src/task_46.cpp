@@ -17,18 +17,21 @@ class bot {
             this->y = y;
             this->z = z;
             this->r = r;
+            this->num_int = 0;
         }
         bot(const bot& rhs) {
             this->x = rhs.x;
             this->y = rhs.y;
             this->z = rhs.z;
             this->r = rhs.r;
+            this->num_int = rhs.num_int;
         }
         bot& operator=(const bot& rhs) {
             this->x = rhs.x;
             this->y = rhs.y;
             this->z = rhs.z;
             this->r = rhs.r;
+            this->num_int = rhs.num_int;
             return (*this);
         }
         int dist(const bot& rhs) const {
@@ -49,6 +52,7 @@ class bot {
         bot::type y;
         bot::type z;
         bot::type r;
+        bot::type num_int;
 };
 
 int main(int argc, char** argv) {
@@ -138,6 +142,25 @@ int main(int argc, char** argv) {
         std::cout << "Z range: [" << min_z << "," << max_z << "]" << std::endl;
         std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
     }
+
+    // Initially all num_int counters are 0.
+    for(auto it_1 = bots.begin(); it_1 != bots.end(); ++it_1) {
+        for(auto it_2 = it_1+1; it_2 != bots.end(); ++it_2) {
+            if(it_1->dist(*it_2) <= (it_1->r + it_2->r)) {
+                it_1->num_int += 1;
+                it_2->num_int += 1;
+            }
+        }
+    }
+
+    bot::type max_int = 0;
+    std::for_each(bots.begin(), bots.end(), [&](const bot& b) {
+        if(b.num_int > max_int) {
+            max_int = b.num_int;
+        }
+    });
+
+    std::cout << max_int << " is the most number of bots whose range intersects." << std::endl;
 
 	return 0;
 }
