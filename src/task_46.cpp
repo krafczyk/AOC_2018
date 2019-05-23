@@ -41,6 +41,14 @@ class bot {
             this->num_int = rhs.num_int;
             return (*this);
         }
+        bool operator==(const bot& rhs) const {
+            if((this->x != rhs.x)||(this->y != rhs.y)||
+               (this->z != rhs.z)||(this->r != rhs.r)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
         int dist(const bot& rhs) const {
             int answer = 0;
             answer += std::abs(this->x-rhs.x);
@@ -224,14 +232,42 @@ int main(int argc, char** argv) {
 
     std::cout << "There are " << num_intersections_max << " bots in range of the median intersection point." << std::endl;
 
-    int num_extra = 0;
-    for(int d = 0; d < 6; ++d) {
-        if(num_intersections(median_point+dirs[d]) == num_intersections_max) {
-            num_extra += 1;
+    bot::type min_dist = std::numeric_limits<bot::type>::max();
+    bot destination(0,0,0,0);
+    bot current_position = median_point;
+    bot::type count = 0;
+    while(true) {
+        bot neighbor_candidate = current_position;
+        for(int d = 0; d < 6; ++d) {
+            // We now look at the neighbors.
+            bot neighbor = current_position+dirs[d];
+            // Check how many intersections
+            int intersections = num_intersections(neighbor);
+            if(intersections == num_intersections_max) {
+                // We're still in the intersection region!
+                bot::type dist = neighbor.dist(destination);
+                if(dist < min_dist) {
+                    neighbor_candidate = neighbor;
+                }
+            } else if(intersections > num_intersections_max) {
+                std::cerr << "There is a region with more intersections! (" << intersections << ")" << std::endl;
+                throw;
+            }
+        }
+        bot::type dist = neighbor_candidate.dist(destination);
+        if(dist >= min_dist) {
+            // We've reached the end of the line!
+            break;
+        } else {
+            min_dist = dist;
+        }
+        count += 1;
+        if(count%10000) {
+            std::cout << "min dist update: " << min_dist << std::endl;
         }
     }
 
-    std::cout << num_extra << " of the surrounding locations also have this max coverage." << std::endl;
+    std::cout << "The closest point in the high signal region is " << min_dist << " units away!" << std::endl;
 
 	return 0;
 }
