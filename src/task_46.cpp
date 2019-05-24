@@ -228,9 +228,9 @@ int main(int argc, char** argv) {
         return total;
     };
 
-    int num_intersections_max = num_intersections(median_point);
+    int num_intersections_med = num_intersections(median_point);
 
-    std::cout << "There are " << num_intersections_max << " bots in range of the median intersection point." << std::endl;
+    std::cout << "There are " << num_intersections_med << " bots in range of the median intersection point." << std::endl;
 
     bot::type min_dist = std::numeric_limits<bot::type>::max();
     bot destination(0,0,0,0);
@@ -259,10 +259,11 @@ int main(int argc, char** argv) {
             // We've reached the end of the line!
             break;
         } else {
+            current_position = neighbor_candidate;
             min_dist = dist;
         }
         count += 1;
-        if(count%10000) {
+        if(count%10000 == 0) {
             std::cout << "min dist update: " << min_dist << std::endl;
         }
     }
