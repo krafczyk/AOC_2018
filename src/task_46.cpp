@@ -49,6 +49,9 @@ class bot {
                 return true;
             }
         }
+        bot::type sum() const {
+            return this->x+this->y+this->z;
+        }
         int dist(const bot& rhs) const {
             int answer = 0;
             answer += std::abs(this->x-rhs.x);
@@ -69,19 +72,24 @@ class bot {
 
 std::unordered_map<int,bot> dirs = {
     {0, bot(1,0,0,0)},
-    {1, bot(-1,0,0,0)},
-    {2, bot(0,1,0,0)},
-    {3, bot(0,-1,0,0)},
-    {4, bot(0,0,1,0)},
-    {5, bot(0,0,-1,0)}
+    {1, bot(0,1,0,0)},
+    {2, bot(0,0,1,0)},
+    {3, bot(1,1,0,0)},
+    {4, bot(1,-1,0,0)},
+    {5, bot(0,1,1,0)},
+    {6, bot(0,1,-1,0)},
+    {7, bot(1,0,1,0)},
+    {8, bot(1,0,-1,0)},
+    {9, bot(1,1,1,0)},
+    {10, bot(-1,1,1,0)},
+    {11, bot(1,-1,1,0)},
+    {12, bot(1,1,-1,0)},
+    {13, bot(1,-1,-1,0)},
+    {14, bot(-1,1,-1,0)},
+    {15, bot(-1,-1,1,0)},
 };
 
-const int Right = 0;
-const int Left = 1;
-const int Forward = 2;
-const int Backward = 3;
-const int Up = 4;
-const int Down = 5;
+const int num_dirs = 16;
 
 std::ostream& operator<<(std::ostream& out, const bot& b) {
     out << "pos=<";
@@ -132,92 +140,6 @@ int main(int argc, char** argv) {
         bots.push_back(bot(x,y,z,r));
     }
 
-    if(verbose) {
-        std::cout << "There are " << bots.size() << " total bots." << std::endl;
-    }
-
-    // Find extent.
-    bot::type min_x = std::numeric_limits<bot::type>::max();
-    bot::type max_x = std::numeric_limits<bot::type>::min();
-    bot::type min_y = std::numeric_limits<bot::type>::max();
-    bot::type max_y = std::numeric_limits<bot::type>::min();
-    bot::type min_z = std::numeric_limits<bot::type>::max();
-    bot::type max_z = std::numeric_limits<bot::type>::min();
-    bot::type min_r = std::numeric_limits<bot::type>::max();
-    bot::type max_r = std::numeric_limits<bot::type>::min();
- 
-    std::for_each(bots.begin(), bots.end(), [&](const bot& b) {
-        if(b.x < min_x) {
-            min_x = b.x;
-        }
-        if(b.x > max_x) {
-            max_x = b.x;
-        }
-        if(b.y < min_y) {
-            min_y = b.y;
-        }
-        if(b.y > max_y) {
-            max_y = b.y;
-        }
-        if(b.z < min_z) {
-            min_z = b.z;
-        }
-        if(b.z > max_z) {
-            max_z = b.z;
-        }
-        if(b.r < min_r) {
-            min_r = b.r;
-        }
-        if(b.r > max_r) {
-            max_r = b.r;
-        }
-    });
-
-    if(verbose) {
-        std::cout << "X range: [" << min_x << "," << max_x << "]" << std::endl;
-        std::cout << "Y range: [" << min_y << "," << max_y << "]" << std::endl;
-        std::cout << "Z range: [" << min_z << "," << max_z << "]" << std::endl;
-        std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
-    }
-
-    std::vector<bot> mid_points;
-    std::vector<bot::type> int_x;
-    std::vector<bot::type> int_y;
-    std::vector<bot::type> int_z;
-
-    for(auto it_1 = bots.begin(); it_1 != bots.end()-1; ++it_1) {
-        for(auto it_2 = it_1+1; it_2 != bots.end(); ++it_2) {
-            // Detect an intersection
-            if(it_1->dist(*it_2) <= it_1->r + it_2->r) {
-                bot::type dx = it_1->x-it_2->x;
-                bot::type dy = it_1->y-it_2->y;
-                bot::type dz = it_1->z-it_2->z;
-                bot::type r_sum = it_1->r + it_2->r;
-                double fraction = ((double)it_1->r)/((double)r_sum);
-                bot::type x = it_1->x+((bot::type)(fraction*dx));
-                bot::type y = it_1->x+((bot::type)(fraction*dy));
-                bot::type z = it_1->x+((bot::type)(fraction*dz));
-                bot mid_point(x, y, z, 0);
-                mid_points.push_back(mid_point);
-                int_x.push_back(x);
-                int_y.push_back(y);
-                int_z.push_back(z);
-            }
-        }
-    }
-
-    std::sort(int_x.begin(), int_x.end());
-    std::sort(int_y.begin(), int_y.end());
-    std::sort(int_z.begin(), int_z.end());
-
-    bot::type med_x = int_x[int_x.size()/2];
-    bot::type med_y = int_y[int_y.size()/2];
-    bot::type med_z = int_z[int_z.size()/2];
-
-    std::cout << "The median position is: " << med_x << "," << med_y << "," << med_z << std::endl;
-
-    bot median_point(med_x, med_y, med_z, 0);
-
     auto num_intersections = [&](const bot& point) {
         int total = 0;
         std::for_each(bots.begin(), bots.end(), [&](const bot& b) {
@@ -228,43 +150,15 @@ int main(int argc, char** argv) {
         return total;
     };
 
-    int num_intersections_med = num_intersections(median_point);
-
-    std::cout << "There are " << num_intersections_med << " bots in range of the median intersection point." << std::endl;
-
     bot::type min_dist = std::numeric_limits<bot::type>::max();
     bot destination(0,0,0,0);
-    bot current_position = median_point;
-    bot::type count = 0;
+    bot current_position = destination;
+    int max_int = num_intersections(destination);
     while(true) {
         bot neighbor_candidate = current_position;
-        for(int d = 0; d < 6; ++d) {
-            // We now look at the neighbors.
-            bot neighbor = current_position+dirs[d];
-            // Check how many intersections
-            int intersections = num_intersections(neighbor);
-            if(intersections == num_intersections_max) {
-                // We're still in the intersection region!
-                bot::type dist = neighbor.dist(destination);
-                if(dist < min_dist) {
-                    neighbor_candidate = neighbor;
-                }
-            } else if(intersections > num_intersections_max) {
-                std::cerr << "There is a region with more intersections! (" << intersections << ")" << std::endl;
-                throw;
-            }
-        }
-        bot::type dist = neighbor_candidate.dist(destination);
-        if(dist >= min_dist) {
-            // We've reached the end of the line!
-            break;
-        } else {
-            current_position = neighbor_candidate;
-            min_dist = dist;
-        }
-        count += 1;
-        if(count%10000 == 0) {
-            std::cout << "min dist update: " << min_dist << std::endl;
+        for(int d = 0; d < num_dirs; ++d) {
+            // Forward
+            // Backward
         }
     }
 
