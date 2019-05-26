@@ -68,12 +68,29 @@ class bot {
 };
 
 std::unordered_map<int,bot> dirs = {
+    // Cardinals
     {0, bot(1,0,0,0)},
     {1, bot(-1,0,0,0)},
     {2, bot(0,1,0,0)},
     {3, bot(0,-1,0,0)},
     {4, bot(0,0,1,0)},
-    {5, bot(0,0,-1,0)}
+    {5, bot(0,0,-1,0)},
+    // 2D combinations
+    {6, bot(1,1,0,0)},
+    {7, bot(-1,-1,0,0)},
+    {8, bot(0,1,1,0)},
+    {9, bot(0,-1,-1,0)},
+    {10, bot(1,0,1,0)},
+    {11, bot(-1,0,-1,0)},
+    // 3d combinations
+    {12, bot(1,1,1,0)},
+    {13, bot(-1,-1,-1,0)},
+    {14, bot(1,1,-1,0)},
+    {15, bot(-1,-1,1,0)},
+    {16, bot(1,-1,-1,0)},
+    {17, bot(-1,1,1,0)},
+    {18, bot(1,-1,1,0)},
+    {19, bot(-1,1,-1,0)},
 };
 
 const int Right = 0;
@@ -180,25 +197,17 @@ int main(int argc, char** argv) {
         std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
     }
 
-    std::vector<bot> intersections;
+    std::vector<bot> corners;
 
-    for(auto it_1 = bots.begin(); it_1 != bots.end()-1; ++it_1) {
-        // Compare with bots.
-        for(auto it_2 = it_1+1; it_2 != bots.end(); ++it_2) {
-            // Detect an intersection
-            if(it_1->dist(*it_2) <= it_1->r + it_2->r) {
-                bot::type dx = it_1->x-it_2->x;
-                bot::type dy = it_1->y-it_2->y;
-                bot::type dz = it_1->z-it_2->z;
-                bot::type r_sum = it_1->r + it_2->r;
-                double fraction = ((double)it_1->r)/((double)r_sum);
-                bot::type x = it_1->x+((bot::type)(fraction*dx));
-                bot::type y = it_1->x+((bot::type)(fraction*dy));
-                bot::type z = it_1->x+((bot::type)(fraction*dz));
-                bot intersection(x, y, z, 0);
-                mid_points.push_back(mid_point);
-            }
-        }
+    // Find corners contained by all bot ranges.
+    for(auto it = bots.begin(); it != bots.end(); ++it) {
+        bot& b = *it;
+        corners.push_back(bot(b.x+b.r,b.y,b.z,0));
+        corners.push_back(bot(b.x-b.r,b.y,b.z,0));
+        corners.push_back(bot(b.x,b.y+b.r,b.z,0));
+        corners.push_back(bot(b.x,b.y-b.r,b.z,0));
+        corners.push_back(bot(b.x,b.y,b.z+b.r,0));
+        corners.push_back(bot(b.x,b.y,b.z-b.r,0));
     }
 
     auto num_intersections = [&](const bot& point) {
@@ -211,36 +220,61 @@ int main(int argc, char** argv) {
         return total;
     };
 
-    bot::type min_dist = std::numeric_limits<bot::type>::max();
+    int max_int = -1;
+    std::vector<bot> max_ps;
+    std::for_each(corners.cbegin(), corners.cend(), [&](const bot& b) {
+        int nint = num_intersections(b);
+        if(nint > max_int) {
+            max_int = nint;
+            max_ps.clear();
+            max_ps.push_back(b);
+        } else if (nint == max_int) {
+            max_ps.push_back(b);
+        }
+    });
+
+    std::cout << "Max intersections are: " << max_int << std::endl;
+    std::cout << "There are " << max_ps.size() << " corners with this many intersections." << std::endl;
+
     bot destination(0,0,0,0);
-    bot current_position = median_point;
+    std::sort(max_ps.begin(), max_ps.end(), [&](const bot& a, const bot& b) {
+        return (a.dist(destination) < b.dist(destination));
+    });
+
+    bot max_p = max_ps[0];
+
+    bot::type min_dist = max_p.dist(destination);
+    bot current_position = max_p;
     bot::type count = 0;
     while(true) {
-        bot neighbor_candidate = current_position;
-        for(int d = 0; d < 6; ++d) {
+        std::vector<bot> candidates;
+        //std::cout << "considering neighbors" << std::endl;
+        for(int d = 0; d < 20; ++d) {
             // We now look at the neighbors.
             bot neighbor = current_position+dirs[d];
             // Check how many intersections
             int intersections = num_intersections(neighbor);
-            if(intersections == num_intersections_max) {
+            //std::cout << neighbor << " (" << intersections << ")" << std::endl;
+            if(intersections == max_int) {
                 // We're still in the intersection region!
                 bot::type dist = neighbor.dist(destination);
                 if(dist < min_dist) {
-                    neighbor_candidate = neighbor;
+                    candidates.push_back(neighbor);
                 }
-            } else if(intersections > num_intersections_max) {
+            } else if(intersections > max_int) {
                 std::cerr << "There is a region with more intersections! (" << intersections << ")" << std::endl;
                 throw;
             }
         }
-        bot::type dist = neighbor_candidate.dist(destination);
-        if(dist >= min_dist) {
-            // We've reached the end of the line!
+        if(candidates.size() == 0) {
+            // no candidates..
             break;
-        } else {
-            current_position = neighbor_candidate;
-            min_dist = dist;
         }
+        std::sort(candidates.begin(), candidates.end(), [&](const bot& a, const bot& b) {
+            return (a.dist(destination) < b.dist(destination));
+        });
+        current_position = candidates[0];
+        min_dist = current_position.dist(destination);
         count += 1;
         if(count%10000 == 0) {
             std::cout << "min dist update: " << min_dist << std::endl;
