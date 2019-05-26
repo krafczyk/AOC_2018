@@ -180,12 +180,10 @@ int main(int argc, char** argv) {
         std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
     }
 
-    std::vector<bot> mid_points;
-    std::vector<bot::type> int_x;
-    std::vector<bot::type> int_y;
-    std::vector<bot::type> int_z;
+    std::vector<bot> intersections;
 
     for(auto it_1 = bots.begin(); it_1 != bots.end()-1; ++it_1) {
+        // Compare with bots.
         for(auto it_2 = it_1+1; it_2 != bots.end(); ++it_2) {
             // Detect an intersection
             if(it_1->dist(*it_2) <= it_1->r + it_2->r) {
@@ -197,26 +195,11 @@ int main(int argc, char** argv) {
                 bot::type x = it_1->x+((bot::type)(fraction*dx));
                 bot::type y = it_1->x+((bot::type)(fraction*dy));
                 bot::type z = it_1->x+((bot::type)(fraction*dz));
-                bot mid_point(x, y, z, 0);
+                bot intersection(x, y, z, 0);
                 mid_points.push_back(mid_point);
-                int_x.push_back(x);
-                int_y.push_back(y);
-                int_z.push_back(z);
             }
         }
     }
-
-    std::sort(int_x.begin(), int_x.end());
-    std::sort(int_y.begin(), int_y.end());
-    std::sort(int_z.begin(), int_z.end());
-
-    bot::type med_x = int_x[int_x.size()/2];
-    bot::type med_y = int_y[int_y.size()/2];
-    bot::type med_z = int_z[int_z.size()/2];
-
-    std::cout << "The median position is: " << med_x << "," << med_y << "," << med_z << std::endl;
-
-    bot median_point(med_x, med_y, med_z, 0);
 
     auto num_intersections = [&](const bot& point) {
         int total = 0;
@@ -227,10 +210,6 @@ int main(int argc, char** argv) {
         });
         return total;
     };
-
-    int num_intersections_med = num_intersections(median_point);
-
-    std::cout << "There are " << num_intersections_med << " bots in range of the median intersection point." << std::endl;
 
     bot::type min_dist = std::numeric_limits<bot::type>::max();
     bot destination(0,0,0,0);
