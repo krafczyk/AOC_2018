@@ -107,6 +107,18 @@ std::unordered_map<int,bot> dirs = {
     {19, bot(-1,1,-1,0)},
 };
 
+
+std::unordered_map<int,bot> face_normals = {
+    {0, bot(1,1,1,0)},
+    {1, bot(-1,-1,-1,0)},
+    {2, bot(-1,1,1,0)},
+    {3, bot(1,-1,-1,0)},
+    {4, bot(-1,-1,1,0)},
+    {5, bot(1,1,-1,0)},
+    {6, bot(1,-1,1,0)},
+    {7, bot(-1,1,-1,0)},
+}
+
 const int Right = 0;
 const int Left = 1;
 const int Forward = 2;
