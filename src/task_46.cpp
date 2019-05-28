@@ -41,12 +41,12 @@ class bot {
             this->num_int = rhs.num_int;
             return (*this);
         }
-        bot cross(const bot& rhs) {
+        bot cross(const bot& rhs) const {
             return bot(this->y*rhs.z-this->z*rhs.y,
                        this->z*rhs.x-this->x*rhs.z,
                        this->x*rhs.y-this->y*rhs.x, 0);
         }
-        bot dot(const bot& rhs) {
+        bot::type dot(const bot& rhs) const {
             return this->x*rhs.x+this->y*rhs.y+this->z*rhs.z;
         }
         double mag() {
@@ -56,7 +56,7 @@ class bot {
             if((this->x != rhs.x)||(this->y != rhs.y)||
                (this->z != rhs.z)||(this->r != rhs.r)) {
                 return false;
-            } else
+            } else {
                 return true;
             }
         }
@@ -117,7 +117,7 @@ std::unordered_map<int,bot> face_units = {
     {5, bot(1,1,-1,0)},
     {6, bot(1,-1,1,0)},
     {7, bot(-1,1,-1,0)},
-}
+};
 
 const int Right = 0;
 const int Left = 1;
@@ -263,7 +263,6 @@ int main(int argc, char** argv) {
                             line_unit_mapval.value.y /= 2;
                             line_unit_mapval.value.z /= 2;
                         }
-                        return false;
                         bot& line_unit = line_unit_mapval.value;
                         // Calculate z=0 point on the line.
                         bot::type d1 = it_1->r;
