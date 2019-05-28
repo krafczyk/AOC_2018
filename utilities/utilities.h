@@ -179,6 +179,22 @@ class array_3d {
         }
 };
 
+template<class T>
+class map_val {
+    public:
+        map_val() {
+            this->value = T();
+            this->set = false;
+        }
+        map_val& operator=(const T& new_val) {
+            this->value = new_val;
+            this->set = true;
+            return *this;
+        }
+        T value;
+        bool set;
+};
+
 int pair_hash(int x, int y) {
     // Here we use something similar to cantor pairing.
     // https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
