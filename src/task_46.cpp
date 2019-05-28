@@ -236,6 +236,15 @@ int main(int argc, char** argv) {
         corners.push_back(bot(b.x,b.y,b.z-b.r,0));
     }
 
+    // For each main intersection
+    for(auto it_1 = bots.cbegin(); it_1 != bots.cend()-1; ++it_1) {
+        for(auto it_2 = it_1+1; it_2 != bots.cend(); ++it_2) {
+            if(it_1->dist(*it_2) <= (it_1->r+it_2->r)) {
+                // An intersection is detected!
+            }
+        }
+    }
+
     auto num_intersections = [&](const bot& point) {
         int total = 0;
         std::for_each(bots.begin(), bots.end(), [&](const bot& b) {
