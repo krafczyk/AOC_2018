@@ -41,6 +41,17 @@ class bot {
             this->num_int = rhs.num_int;
             return (*this);
         }
+        bot cross(const bot& rhs) {
+            return bot(this->y*rhs.z-this->z*rhs.y,
+                       this->z*rhs.x-this->x*rhs.z,
+                       this->x*rhs.y-this->y*rhs.x, 0);
+        }
+        bot dot(const bot& rhs) {
+            return this->x*rhs.x+this->y*rhs.y+this->z*rhs.z;
+        }
+        double mag() {
+            return std::sqrt(this->x*this->x+this->y*this->y+this->z*this->z);
+        }
         bool operator==(const bot& rhs) const {
             if((this->x != rhs.x)||(this->y != rhs.y)||
                (this->z != rhs.z)||(this->r != rhs.r)) {
@@ -58,6 +69,9 @@ class bot {
         }
         bot operator+(const bot& rhs) const {
             return bot(this->x+rhs.x, this->y+rhs.y, this->z+rhs.z, this->r+rhs.r);
+        }
+        bot operator*(double a) const {
+            return bot(this->x*a, this->y*a, this->z*a, this->r*a);
         }
         friend std::ostream& operator<<(std::ostream& out, const bot& b);
         bot::type x;
