@@ -56,7 +56,7 @@ class bot {
             if((this->x != rhs.x)||(this->y != rhs.y)||
                (this->z != rhs.z)||(this->r != rhs.r)) {
                 return false;
-            } else {
+            } else
                 return true;
             }
         }
@@ -108,7 +108,7 @@ std::unordered_map<int,bot> dirs = {
 };
 
 
-std::unordered_map<int,bot> face_normals = {
+std::unordered_map<int,bot> face_units = {
     {0, bot(1,1,1,0)},
     {1, bot(-1,-1,-1,0)},
     {2, bot(-1,1,1,0)},
@@ -236,11 +236,106 @@ int main(int argc, char** argv) {
         corners.push_back(bot(b.x,b.y,b.z-b.r,0));
     }
 
+    std::unordered_map<int,map_val<bot>> cross_units;
+
     // For each main intersection
     for(auto it_1 = bots.cbegin(); it_1 != bots.cend()-1; ++it_1) {
         for(auto it_2 = it_1+1; it_2 != bots.cend(); ++it_2) {
             if(it_1->dist(*it_2) <= (it_1->r+it_2->r)) {
                 // An intersection is detected!
+                
+                // For each pair of face normals,
+                // Find intersection line if it exists.
+                for(int fi_1 = 0; fi_1 < 8; ++fi_1) {
+                    for(int fi_2=0; fi_2 < 8; ++fi_2) {
+                        // Skip same or parallel face.
+                        if((fi_1/2) == (fi_2/2)) {
+                            continue;
+                        }
+                        // Fetch or calculate cross product of units.
+                        const bot& norm_1 = face_units[fi_1];
+                        bot::type cross_hash = pair_hash_l(fi_1, fi_2);
+                        map_val<bot>& line_unit_mapval = cross_units[cross_hash];
+                        if(!line_unit_mapval.set) {
+                            line_unit_mapval = norm_1.cross(norm_2);
+                            // Reduce all elements to 1s.
+                            line_unit_mapval.value.x /= 2;
+                            line_unit_mapval.value.y /= 2;
+                            line_unit_mapval.value.z /= 2;
+                        }
+                        return false;
+                        bot& line_unit = line_unit_mapval.value;
+                        // Calculate z=0 point on the line.
+                        bot::type d1 = it_1->r;
+                        if(norm_1.x == 1) {
+                            d1 += it_1->x;
+                        } else {
+                            d1 -= it_1->x;
+                        }
+                        if(norm_1.y == 1) {
+                            d1 += it_1->y;
+                        } else {
+                            d1 -= it_1->y;
+                        }
+                        if(norm_1.z == 1) {
+                            d1 += it_1->z;
+                        } else {
+                            d1 -= it_1->z;
+                        }
+                        bot::type d2 = it_2->r;
+                        if(norm_2.x == 1) {
+                            d2 += it_2->x;
+                        } else {
+                            d2 -= it_2->x;
+                        }
+                        if(norm_2.y == 1) {
+                            d2 += it_2->y;
+                        } else {
+                            d2 -= it_2->y;
+                        }
+                        if(norm_2.z == 1) {
+                            d2 += it_2->z;
+                        } else {
+                            d2 -= it_2->z;
+                        }
+
+                        bot::type det = norm_1.x*norm_2.y-norm_1.y*norm_2.x;
+
+                        bot line_point((d1*norm_2.y+d2*norm_1.y)/det,-(d1*norm_2.x+d2*norm_1.x),0,0);
+                        // Intersect line with planes from first sphere
+                        for(int fi = 0; fi < 8; ++fi) {
+                            // Skip planes we're intersecting
+                            if(fi == fi_1) {
+                                continue;
+                            }
+                            bot& unit = face_units[fi];
+                            bot::type d = it_1->r;
+                            if(unit.x == 1) {
+                                d += it_1->x;
+                            } else {
+                                d -= it_1->x;
+                            }
+                            if(unit.y == 1) {
+                                d += it_1->y;
+                            } else {
+                                d -= it_1->y;
+                            }
+                            if(unit.z == 1) {
+                                d += it_1->z;
+                            } else {
+                                d -= it_1->z;
+                            }
+                            bot::type s = (d-unit.x*line_point.x-unit.y*line_point.y-unit.z*line_point.z)/(unit.x+unit.y+unit.z);
+                            bot point(line_point.x+s*unit.x,line_point.y+s*unit.y,line_point.z+s*unit.z, 0);
+                            std::cout << "intersection point: " << point << std::endl;
+                            if(it_1->dist(point) <= it_1->r) {
+                                std::cout << "Its in the circle!" << std::endl;
+                            }
+                        }
+                    }
+                }
+                std::cout << "Exit early!!" << std::endl;
+                return 0;
             }
         }
     }
