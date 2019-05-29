@@ -243,6 +243,9 @@ int main(int argc, char** argv) {
         for(auto it_2 = it_1+1; it_2 != bots.cend(); ++it_2) {
             if(it_1->dist(*it_2) <= (it_1->r+it_2->r)) {
                 // An intersection is detected!
+                std::cout << "Comparing the bots" << std::endl;
+                std::cout << *it_1 << std::endl;
+                std::cout << *it_2 << std::endl;
                 
                 // For each pair of face normals,
                 // Find intersection line if it exists.
@@ -253,54 +256,63 @@ int main(int argc, char** argv) {
                             continue;
                         }
                         // Fetch or calculate cross product of units.
-                        const bot& norm_1 = face_units[fi_1];
+                        const bot& unit_1 = face_units[fi_1];
+                        const bot& unit_2 = face_units[fi_2];
+                        std::cout << "Face unit 1: " << unit_1 << std::endl;
+                        std::cout << "Face unit 2: " << unit_2 << std::endl;
                         bot::type cross_hash = pair_hash_l(fi_1, fi_2);
                         map_val<bot>& line_unit_mapval = cross_units[cross_hash];
                         if(!line_unit_mapval.set) {
-                            line_unit_mapval = norm_1.cross(norm_2);
+                            line_unit_mapval = unit_1.cross(unit_2);
                             // Reduce all elements to 1s.
                             line_unit_mapval.value.x /= 2;
                             line_unit_mapval.value.y /= 2;
                             line_unit_mapval.value.z /= 2;
                         }
                         bot& line_unit = line_unit_mapval.value;
+                        std::cout << "Line unit is: " << line_unit << std::endl;
                         // Calculate z=0 point on the line.
                         bot::type d1 = it_1->r;
-                        if(norm_1.x == 1) {
+                        if(unit_1.x == 1) {
                             d1 += it_1->x;
                         } else {
                             d1 -= it_1->x;
                         }
-                        if(norm_1.y == 1) {
+                        if(unit_1.y == 1) {
                             d1 += it_1->y;
                         } else {
                             d1 -= it_1->y;
                         }
-                        if(norm_1.z == 1) {
+                        if(unit_1.z == 1) {
                             d1 += it_1->z;
                         } else {
                             d1 -= it_1->z;
                         }
+                        std::cout << "d1: " << d1 << std::endl;
                         bot::type d2 = it_2->r;
-                        if(norm_2.x == 1) {
+                        if(unit_2.x == 1) {
                             d2 += it_2->x;
                         } else {
                             d2 -= it_2->x;
                         }
-                        if(norm_2.y == 1) {
+                        if(unit_2.y == 1) {
                             d2 += it_2->y;
                         } else {
                             d2 -= it_2->y;
                         }
-                        if(norm_2.z == 1) {
+                        if(unit_2.z == 1) {
                             d2 += it_2->z;
                         } else {
                             d2 -= it_2->z;
                         }
+                        std::cout << "d2: " << d2 << std::endl;
 
-                        bot::type det = norm_1.x*norm_2.y-norm_1.y*norm_2.x;
+                        bot::type det = unit_1.x*unit_2.y-unit_1.y*unit_2.x;
+                        std::cout << "det: " << det << std::endl;
 
-                        bot line_point((d1*norm_2.y+d2*norm_1.y)/det,-(d1*norm_2.x+d2*norm_1.x),0,0);
+                        bot line_point((d1*unit_2.y-d2*unit_1.y)/det,-(d1*unit_2.x-d2*unit_1.x)/det,0,0);
+                        std::cout << "intersection point at z=0: " << line_point << std::endl;
+                        return 0;
                         // Intersect line with planes from first sphere
                         for(int fi = 0; fi < 8; ++fi) {
                             // Skip planes we're intersecting
