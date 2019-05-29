@@ -15,22 +15,7 @@
 const long erosion_factor = 20183;
 long depth;
 
-class map_val {
-    public:
-        map_val() {
-            this->value = 0;
-            this->set = false;
-        }
-        map_val& operator=(int new_val) {
-            this->value = new_val;
-            this->set = true;
-            return *this;
-        }
-        int value;
-        bool set;
-};
-
-std::unordered_map<long,map_val> emap;
+std::unordered_map<long,map_val<int>> emap;
 
 long target_x = 0;
 long target_y = 0;
@@ -38,7 +23,7 @@ long extra_x = 0;
 long extra_y = 0;
 
 long erosion_level(long x, long y) {
-    map_val& val = emap[pair_hash_l(x,y)];
+    map_val<int>& val = emap[pair_hash_l(x,y)];
     if(val.set) {
         // Already calculated, return it!
         return val.value;
@@ -271,7 +256,7 @@ int main(int argc, char** argv) {
     node start(0,0,tools::torch);
     queue.insert(start.dist_estimate(target),start);
 
-    std::unordered_map<long,map_val> min_dists;
+    std::unordered_map<long,map_val<int>> min_dists;
     min_dists[start.hash()] = 0;
 
     int counter = 0;
