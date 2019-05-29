@@ -312,8 +312,8 @@ int main(int argc, char** argv) {
 
                         bot line_point((d1*unit_2.y-d2*unit_1.y)/det,-(d1*unit_2.x-d2*unit_1.x)/det,0,0);
                         std::cout << "intersection point at z=0: " << line_point << std::endl;
-                        return 0;
                         // Intersect line with planes from first sphere
+                        // Now detecting intersections
                         for(int fi = 0; fi < 8; ++fi) {
                             // Skip planes we're intersecting
                             if(fi == fi_1) {
@@ -336,12 +336,13 @@ int main(int argc, char** argv) {
                             } else {
                                 d -= it_1->z;
                             }
-                            bot::type s = (d-unit.x*line_point.x-unit.y*line_point.y-unit.z*line_point.z)/(unit.x+unit.y+unit.z);
+                            bot::type s = (d-unit.x*line_point.x-unit.y*line_point.y-unit.z*line_point.z)/(unit.x*line_unit.x+unit.y*line_unit.y+unit.z*line_unit.z);
                             bot point(line_point.x+s*unit.x,line_point.y+s*unit.y,line_point.z+s*unit.z, 0);
                             std::cout << "intersection point: " << point << std::endl;
                             if(it_1->dist(point) <= it_1->r) {
                                 std::cout << "Its in the circle!" << std::endl;
                             }
+                            return 0;
                         }
                     }
                 }
