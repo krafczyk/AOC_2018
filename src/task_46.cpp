@@ -316,10 +316,14 @@ int main(int argc, char** argv) {
                         // Now detecting intersections
                         for(int fi = 0; fi < 8; ++fi) {
                             // Skip planes we're intersecting
-                            if(fi == fi_1) {
+                            if((fi == fi_1)||(fi == fi_2)) {
                                 continue;
                             }
                             bot& unit = face_units[fi];
+                            // Skip planes which are parallel to the line!
+                            if(unit.dot(line_unit) == 0) {
+                                continue;
+                            }
                             bot::type d = it_1->r;
                             if(unit.x == 1) {
                                 d += it_1->x;
@@ -336,13 +340,17 @@ int main(int argc, char** argv) {
                             } else {
                                 d -= it_1->z;
                             }
+                            std::cout << "1" << std::endl;
+                            std::cout << "intersecting face unit: " << unit << std::endl;
+                            std::cout << "line unit: " << line_unit << std::endl;
+                            std::cout << "denominator: " << unit.x*line_unit.x+unit.y*line_unit.y+unit.z*line_unit.z << std::endl;
                             bot::type s = (d-unit.x*line_point.x-unit.y*line_point.y-unit.z*line_point.z)/(unit.x*line_unit.x+unit.y*line_unit.y+unit.z*line_unit.z);
+                            std::cout << "2" << std::endl;
                             bot point(line_point.x+s*unit.x,line_point.y+s*unit.y,line_point.z+s*unit.z, 0);
                             std::cout << "intersection point: " << point << std::endl;
                             if(it_1->dist(point) <= it_1->r) {
                                 std::cout << "Its in the circle!" << std::endl;
                             }
-                            return 0;
                         }
                     }
                 }
