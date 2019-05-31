@@ -73,6 +73,15 @@ class bot {
         bot operator*(double a) const {
             return bot(this->x*a, this->y*a, this->z*a, this->r*a);
         }
+        bot operator/(double a) const {
+            return bot(this->x*a, this->y*a, this->z*a, this->r*a);
+        }
+        bot operator*(bot::type a) const {
+            return bot(this->x*a, this->y*a, this->z*a, this->r*a);
+        }
+        bot operator/(bot::type a) const {
+            return bot(this->x*a, this->y*a, this->z*a, this->r*a);
+        }
         friend std::ostream& operator<<(std::ostream& out, const bot& b);
         bot::type x;
         bot::type y;
@@ -307,10 +316,7 @@ int main(int argc, char** argv) {
                         }
                         std::cout << "d2: " << d2 << std::endl;
 
-                        bot::type det = unit_1.x*unit_2.y-unit_1.y*unit_2.x;
-                        std::cout << "det: " << det << std::endl;
-
-                        bot line_point((d1*unit_2.y-d2*unit_1.y)/det,-(d1*unit_2.x-d2*unit_1.x)/det,0,0);
+                        bot line_point = (unit_2.cross(line_unit)*d1+line_unit.cross(unit_1)*d2)/unit_1.dot(unit_2.cross(line_unit));
                         std::cout << "intersection point at z=0: " << line_point << std::endl;
                         // Intersect line with planes from first sphere
                         // Now detecting intersections
