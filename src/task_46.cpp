@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 #include <fstream>
 #include <string>
 #include <set>
@@ -60,6 +61,9 @@ class bot {
                 return true;
             }
         }
+        bool operator!=(const bot& rhs) const {
+            return !((*this) == rhs);
+        }
         int dist(const bot& rhs) const {
             int answer = 0;
             answer += std::abs(this->x-rhs.x);
@@ -93,6 +97,71 @@ class bot {
         bot::type num_int;
 };
 
+bot::type hash_a[3] = {0,0,0};
+bot::type hash_b[3] = {0,0,0};
+// This is the 12th carol prime.
+bot::type hash_p = 1125899839733759;
+bot::type hash_m = 0;
+bot::type hash_base = 0;
+
+std::minstd_rand rand_generator(0);
+std::uniform_int_distribution<bot::type> unif_dist(0,std::numeric_limits<bot::type>::max());
+
+bot::type find_larger_prime(bot::type low) {
+    std::vector<bot::type> primes;
+    bot::type prime_candidate = 1;
+    bool divisible = false;
+    do {
+        prime_candidate += 1;
+        divisible = false;
+        for(auto it = primes.begin(); it != primes.end(); ++it) {
+            if(prime_candidate%(*it) == 0) {
+                // divisible
+                divisible = true;
+                break;
+            }
+        }
+        if(!divisible) {
+            primes.push_back(prime_candidate);
+        }
+    } while ((prime_candidate < low)||(!divisible));
+    return prime_candidate;
+}
+
+void initialize_hash(bot::type base, bot::type m) {
+    hash_base = base;
+    hash_m = m;
+    if(hash_p < hash_m) {
+        std::cerr << "Choose a larger hashing prime!" << std::endl;
+        throw;
+    }
+    // Find a prime larger than m.
+    //hash_p = find_larger_prime(20*m);
+
+    auto gen_a = [&](int i) {
+        while((hash_a[i] = unif_dist(rand_generator)%hash_p) == 0) {
+        }
+    };
+
+    gen_a(0);
+    gen_a(1);
+    gen_a(2);
+    hash_b[0] = unif_dist(rand_generator)%hash_p;
+    hash_b[1] = unif_dist(rand_generator)%hash_p;
+    hash_b[2] = unif_dist(rand_generator)%hash_p;
+}
+
+bot::type element_hash(bot::type in, int i) {
+    in += hash_base;
+    in = ((hash_a[i]*(in%hash_p))+hash_b[i])%hash_p;
+    in = in%hash_m;
+    return in;
+}
+
+bot::type bot_space_hash(const bot& b) {
+    return element_hash(b.x, 0)+element_hash(b.y, 1)+element_hash(b.z, 2);
+};
+
 std::unordered_map<int,bot> dirs = {
     // Cardinals
     {0, bot(1,0,0,0)},
@@ -104,20 +173,28 @@ std::unordered_map<int,bot> dirs = {
     // 2D combinations
     {6, bot(1,1,0,0)},
     {7, bot(-1,-1,0,0)},
-    {8, bot(0,1,1,0)},
-    {9, bot(0,-1,-1,0)},
-    {10, bot(1,0,1,0)},
-    {11, bot(-1,0,-1,0)},
+    {8, bot(1,-1,0,0)},
+    {9, bot(-1,1,0,0)},
+    {10, bot(0,1,1,0)},
+    {11, bot(0,-1,-1,0)},
+    {12, bot(0,1,-1,0)},
+    {13, bot(0,-1,1,0)},
+    {14, bot(1,0,1,0)},
+    {15, bot(-1,0,-1,0)},
+    {16, bot(1,0,-1,0)},
+    {17, bot(-1,0,1,0)},
     // 3d combinations
-    {12, bot(1,1,1,0)},
-    {13, bot(-1,-1,-1,0)},
-    {14, bot(1,1,-1,0)},
-    {15, bot(-1,-1,1,0)},
-    {16, bot(1,-1,-1,0)},
-    {17, bot(-1,1,1,0)},
-    {18, bot(1,-1,1,0)},
-    {19, bot(-1,1,-1,0)},
+    {18, bot(1,1,1,0)},
+    {19, bot(-1,-1,-1,0)},
+    {20, bot(1,1,-1,0)},
+    {21, bot(-1,-1,1,0)},
+    {22, bot(1,-1,-1,0)},
+    {23, bot(-1,1,1,0)},
+    {24, bot(1,-1,1,0)},
+    {25, bot(-1,1,-1,0)},
 };
+
+const int num_dirs = 26;
 
 
 std::unordered_map<int,bot> face_units = {
@@ -189,6 +266,7 @@ int main(int argc, char** argv) {
 
     if(verbose) {
         std::cout << "There are " << bots.size() << " total bots." << std::endl;
+        //std::cout << "Largest long is : " << std::numeric_limits<long>::max() << std::endl;
     }
 
     // Find extent.
@@ -235,7 +313,11 @@ int main(int argc, char** argv) {
         std::cout << "R range: [" << min_r << "," << max_r << "]" << std::endl;
     }
 
-    std::vector<bot> points;
+    bot::type min_val = std::min(std::min(min_x, min_y), min_z);
+
+    initialize_hash(std::abs(min_val), bots.size()*10000000000);
+
+    std::unordered_map<bot::type,map_val<bot>> points;
 
     // For each main intersection
     auto plane_constant = [](const bot& the_bot, const bot& face_unit) {
@@ -267,8 +349,20 @@ int main(int argc, char** argv) {
     // Add new points
     auto add_point = [&points](const bot& a, const bot& b, const bot& the_point) {
         if((a.dist(the_point) <= a.r)&&(b.dist(the_point) <= b.r)) {
-            if(!hasElement(points, the_point)) {
-                points.push_back(the_point);
+            bot::type hash_val = bot_space_hash(the_point);
+            map_val<bot>& the_val = points[hash_val];
+            if(the_val.set) {
+                if(the_val.value != the_point) {
+                    std::cerr << "There was a hash collision!!" << std::endl;
+                    std::cout << "Trying to store value: " << the_point << std::endl;
+                    std::cout << "Hash val was: " << hash_val << std::endl;
+                    std::cout << "Stored value was: " << the_val.value << std::endl;
+                    std::cout << "Verify collision: " << bot_space_hash(the_val.value) << std::endl;
+                    std::cout << "There were " << points.size() << " values added already!" << std::endl;
+                    throw;
+                }
+            } else {
+                the_val = the_point;
             }
         }
     };
@@ -356,26 +450,28 @@ int main(int argc, char** argv) {
         return total;
     };
 
-    std::cout << "Testing the following points:" << std::endl;
-    std::for_each(points.cbegin(), points.cend(), [&](const bot& b) {
-        std::cout << b << std::endl;
-    });
+    //if(verbose) {
+    //    std::cout << "Testing the following points:" << std::endl;
+    //    std::for_each(points.cbegin(), points.cend(), [&](const auto& b) {
+    //        std::cout << b.second.value << std::endl;
+    //    });
+    //}
 
     int max_int = -1;
     std::vector<bot> max_ps;
-    std::for_each(points.cbegin(), points.cend(), [&](const bot& b) {
-        int nint = num_intersections(b);
+    std::for_each(points.cbegin(), points.cend(), [&](const auto& b) {
+        int nint = num_intersections(b.second.value);
         if(nint > max_int) {
             max_int = nint;
             max_ps.clear();
-            max_ps.push_back(b);
+            max_ps.push_back(b.second.value);
         } else if (nint == max_int) {
-            max_ps.push_back(b);
+            max_ps.push_back(b.second.value);
         }
     });
 
     std::cout << "Max intersections are: " << max_int << std::endl;
-    std::cout << "There are " << max_ps.size() << " corners with this many intersections." << std::endl;
+    std::cout << "There are " << max_ps.size() << " points with this many intersections." << std::endl;
 
     bot destination(0,0,0,0);
     std::sort(max_ps.begin(), max_ps.end(), [&](const bot& a, const bot& b) {
@@ -390,7 +486,7 @@ int main(int argc, char** argv) {
     while(true) {
         std::vector<bot> candidates;
         //std::cout << "considering neighbors" << std::endl;
-        for(int d = 0; d < 20; ++d) {
+        for(int d = 0; d < num_dirs; ++d) {
             // We now look at the neighbors.
             bot neighbor = current_position+dirs[d];
             // Check how many intersections
