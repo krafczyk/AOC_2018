@@ -105,6 +105,14 @@ std::ostream& operator<<(std::ostream& out, const bot& b) {
     return out;
 }
 
+class bot_node {
+    public:
+        bot_node(const bot& the_bot) {
+            this->the_bot = the_bot;
+        }
+        bot the_bot;
+        std::vector<bot_node*> neighbors;
+};
 
 int main(int argc, char** argv) {
 	// Parse Arguments
@@ -125,7 +133,7 @@ int main(int argc, char** argv) {
 	// Open input as stream
 	std::ifstream infile(input_filepath);
 
-    std::vector<bot> bots;
+    std::vector<bot_node*> bots;
 
     bot::type x = 0;
     bot::type y = 0;
@@ -142,12 +150,26 @@ int main(int argc, char** argv) {
         iss >> z;
         iss.ignore(5);
         iss >> r;
-        bots.push_back(bot(x,y,z,r));
+        bots.push_back(new bot_node(bot(x,y,z,r)));
     }
 
     if(verbose) {
         std::cout << "There are " << bots.size() << " total bots." << std::endl;
     }
+
+    // We now must find and make connections to the other bots.
+    
+    for(auto it_1 = bots.begin(); it_1 != bots.end()-1; ++it_1) {
+        for(auto it_2 = it_1+1; it_2 != bots.end(); ++it_2) {
+            if((*it_1)->the_bot.dist((*it_2)->the_bot) <= (*it_1)->the_bot.r+(*it_2)->the_bot.r) {
+                // They intersect!
+                (*it_1)->neighbors.push_back(*it_2);
+                (*it_2)->neighbors.push_back(*it_1);
+            }
+        }
+    }
+
+    // We must now find the maximal clique!
 
 	return 0;
 }
