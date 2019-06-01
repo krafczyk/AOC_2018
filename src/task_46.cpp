@@ -107,27 +107,6 @@ bot::type hash_base = 0;
 std::minstd_rand rand_generator(0);
 std::uniform_int_distribution<bot::type> unif_dist(0,std::numeric_limits<bot::type>::max());
 
-bot::type find_larger_prime(bot::type low) {
-    std::vector<bot::type> primes;
-    bot::type prime_candidate = 1;
-    bool divisible = false;
-    do {
-        prime_candidate += 1;
-        divisible = false;
-        for(auto it = primes.begin(); it != primes.end(); ++it) {
-            if(prime_candidate%(*it) == 0) {
-                // divisible
-                divisible = true;
-                break;
-            }
-        }
-        if(!divisible) {
-            primes.push_back(prime_candidate);
-        }
-    } while ((prime_candidate < low)||(!divisible));
-    return prime_candidate;
-}
-
 void initialize_hash(bot::type base, bot::type m) {
     hash_base = base;
     hash_m = m;
@@ -135,8 +114,6 @@ void initialize_hash(bot::type base, bot::type m) {
         std::cerr << "Choose a larger hashing prime!" << std::endl;
         throw;
     }
-    // Find a prime larger than m.
-    //hash_p = find_larger_prime(20*m);
 
     auto gen_a = [&](int i) {
         while((hash_a[i] = unif_dist(rand_generator)%hash_p) == 0) {
