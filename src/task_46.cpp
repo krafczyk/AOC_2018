@@ -114,6 +114,95 @@ class bot_node {
         std::vector<bot_node*> neighbors;
 };
 
+/* The BronKerbosch2 algorithm for finding a maximal clique
+BronKerbosch2(R,P,X):
+    if P and X are both empty:
+        report R as a maximal clique
+    choose a pivot vertex u in P ⋃ X
+    for each vertex v in P \ N(u):
+        BronKerbosch2(R ⋃ {v}, P ⋂ N(v), X ⋂ N(v))
+        P := P \ {v}
+        X := X ⋃ {v}
+*/
+
+std::vector<bot_node*> BronKerbosch2(std::vector<bot_node*> R, std::vector<bot_node*> P, std::vector<bot_node*> X) {
+    std::cout << "BronKerbosch2 called" << std::endl;
+    if((P.size() == 0)&&(X.size() == 0)) {
+        return R;
+    }
+    std::vector<std::vector<bot_node*>> found_cliques;
+    // Choose a pivot vertex with the highest degree.
+    size_t max_degree = 0;
+    std::vector<bot_node*> pivot_candidates;
+    auto manage_candidates = [&pivot_candidates,&max_degree](bot_node* candidate) {
+        if(candidate->neighbors.size() > max_degree) {
+            max_degree = candidate->neighbors.size();
+            pivot_candidates.clear();
+            pivot_candidates.push_back(candidate);
+        } else if(candidate->neighbors.size() == max_degree) {
+            pivot_candidates.push_back(candidate);
+        }
+    };
+    std::for_each(P.begin(), P.end(), manage_candidates);
+    std::for_each(X.begin(), X.end(), manage_candidates);
+    // Choose the first pivot candidate.
+    bot_node* pivot = pivot_candidates[0];
+
+    // build list of vertices to iterate over
+    std::vector<bot_node*> vertex_list;
+    std::for_each(P.begin(), P.end(), [&vertex_list, &pivot](bot_node* v) {
+        if (!hasElement(pivot->neighbors, v)) {
+            vertex_list.push_back(v);
+        }
+    });
+
+    // Perform inner loop.
+    for(auto it = vertex_list.begin(); it != vertex_list.end(); ++it) {
+        bot_node* v = *it;
+        //BronKerbosch2(R ⋃ {v}, P ⋂ N(v), X ⋂ N(v))
+        std::vector<bot_node*> new_R = R;
+        new_R.push_back(v);
+
+        auto remove_elements = [&pivot](std::vector<bot_node*>& vec) {
+            auto it = vec.begin();
+            while(it != vec.end()) {
+                if(!hasElement(pivot->neighbors,*it)) {
+                    it = vec.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        };
+        std::vector<bot_node*> new_P = P;
+        remove_elements(new_P);
+        std::vector<bot_node*> new_X = X;
+        remove_elements(new_X);
+        // Recursive call
+        std::vector<bot_node*> max_clique = BronKerbosch2(new_R, new_P, new_X);
+        // Save the found clique.
+        found_cliques.push_back(max_clique);
+        // Move the vertex from P to X.
+        for(auto it = P.begin(); it != P.end();) {
+            if((*it) == v) {
+                P.erase(it);
+                break;
+            }
+        }
+        X.push_back(v);
+    }
+    
+    // Choose the max clique out of the candidates to return.
+    std::vector<bot_node*>& max_clique = found_cliques[0];
+    for(auto it = found_cliques.begin()+1; it != found_cliques.end(); ++it) {
+        if(it->size() > max_clique.size()) {
+            max_clique = *it;
+        }
+    }
+    std::cout << "BronKerbosch2 call ending" << std::endl;
+    // Return the max clique.
+    return max_clique;
+}
+
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
@@ -170,6 +259,10 @@ int main(int argc, char** argv) {
     }
 
     // We must now find the maximal clique!
+    
+    std::vector<bot_node*> maximal_clique = BronKerbosch2(std::vector<bot_node*>(), bots, std::vector<bot_node*>());
+
+    std::cout << "The maximal clique had size: " << maximal_clique.size() << std::endl;
 
 	return 0;
 }
