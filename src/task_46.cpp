@@ -115,6 +115,7 @@ class bot_node {
 };
 
 /* The BronKerbosch2 algorithm for finding a maximal clique
+ * https://en.wikipedia.org/wiki/Bron%E2%80%93Kerbosch_algorithm
 BronKerbosch2(R,P,X):
     if P and X are both empty:
         report R as a maximal clique
@@ -126,7 +127,6 @@ BronKerbosch2(R,P,X):
 */
 
 std::vector<bot_node*> BronKerbosch2(std::vector<bot_node*> R, std::vector<bot_node*> P, std::vector<bot_node*> X) {
-    std::cout << "BronKerbosch2 called" << std::endl;
     if((P.size() == 0)&&(X.size() == 0)) {
         return R;
     }
@@ -186,6 +186,8 @@ std::vector<bot_node*> BronKerbosch2(std::vector<bot_node*> R, std::vector<bot_n
             if((*it) == v) {
                 P.erase(it);
                 break;
+            } else {
+                ++it;
             }
         }
         X.push_back(v);
@@ -198,7 +200,6 @@ std::vector<bot_node*> BronKerbosch2(std::vector<bot_node*> R, std::vector<bot_n
             max_clique = *it;
         }
     }
-    std::cout << "BronKerbosch2 call ending" << std::endl;
     // Return the max clique.
     return max_clique;
 }
@@ -263,6 +264,32 @@ int main(int argc, char** argv) {
     std::vector<bot_node*> maximal_clique = BronKerbosch2(std::vector<bot_node*>(), bots, std::vector<bot_node*>());
 
     std::cout << "The maximal clique had size: " << maximal_clique.size() << std::endl;
+
+    if (verbose) {
+        std::cout << "The bots were" << std::endl;
+        ForEach(maximal_clique, [](const auto& b) {
+            std::cout << b->the_bot << std::endl;
+        });
+    }
+
+    // Now find the furthest bot from the origin. not containing the origin
+    bot::type max_min_dist = 0;
+    bot origin(0,0,0,0);
+    ForEach(maximal_clique, [&max_min_dist,&origin](const auto& bn) {
+        if(origin.dist(bn->the_bot) > bn->the_bot.r) {
+            // This bot doesn't contain the origin.
+            bot::type min_dist = origin.dist(bn->the_bot)-bn->the_bot.r;
+            if(min_dist < 0) {
+                std::cerr << "We encountered a strange situation!!!" << std::endl;
+            }
+            if(min_dist > max_min_dist) {
+                max_min_dist = min_dist;
+            }
+        }
+    });
+
+    std::cout << "The maximal clique had size: " << maximal_clique.size() << std::endl;
+    std::cout << "The smallest distance to the region of maximum signal is: " << max_min_dist << std::endl;
 
 	return 0;
 }
