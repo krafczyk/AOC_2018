@@ -1,4 +1,5 @@
 #include <iostream>
+#include <regex>
 #include <fstream>
 #include <string>
 #include <set>
@@ -15,6 +16,7 @@ class group {
     public:
         type units;
         type hp;
+        type ap;
         type initiative;
         std::string attack_type;
         std::vector<std::string> weaknesses;
@@ -50,11 +52,18 @@ int main(int argc, char** argv) {
     army immune;
 
     std::string line;
+    std::regex group_matcher("^(\\d+) units each with (\\d+) hit points \\(\\).*$", std::regex::ECMAScript);
     std::getline(infile, line);
     while(std::getline(infile, line)) {
-        // Quit if we've found the Infection line
-        if(line == "Infection:") {
+        std::smatch match_results;
+        if(!std::regex_match(line, match_results, group_matcher)) {
+            // Quit since we found a line which doesn't match
             break;
+        } else {
+            group new_group;
+            std::cout << match_results[0] << std::endl;
+            std::cout << match_results[1] << std::endl;
+            std::cout << match_results[2] << std::endl;
         }
     }
 
