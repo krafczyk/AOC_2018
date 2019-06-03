@@ -91,12 +91,19 @@ class army {
             }
         }
         std::vector<group*> groups;
+        friend std::ostream& operator<<(std::ostream& out, army& ary);
 };
 
-void fight(army& A, army& B) {
-    std::cout << "Fight start" << std::endl;
+std::ostream& operator<<(std::ostream& out, army& ary) {
+    for(auto grp_it = ary.groups.begin(); grp_it != ary.groups.end(); ++grp_it) {
+        out << *(*grp_it) << std::endl;
+    }
+    out << std::endl;
+    return out;
+}
+
+void fight(army& A, army& B, bool verbose = false) {
     // Target Selection
-    std::cout << "target selection" << std::endl;
     army* army_selector[2] = {&A, &B};
     typedef std::pair<size_t,size_t> global_idx;
     std::vector<global_idx> groups;
@@ -123,19 +130,16 @@ void fight(army& A, army& B) {
         }
     });
 
-    std::cout << "attack computation" << std::endl;
     std::vector<std::pair<group*,group*>> attacks;
     // Compute the attacks.
 
     for(auto it = groups.begin(); it != groups.end(); ++it) {
-        std::cout << "group is choosing who to attack" << std::endl;
         size_t allies_idx = (it->first);
         size_t enemies_idx = (it->first+1)%2;
         army* allies = army_selector[allies_idx];
         army* enemies = army_selector[enemies_idx];
-        group* attacker = allies[allies_idx].groups[it->second];
+        group* attacker = allies->groups[it->second];
         std::vector<group*> defenders;
-        std::cout << "1" << std::endl;
         for(auto it = enemies->groups.begin(); it != enemies->groups.end(); ++it) {
             bool valid = true;
             for(auto attack_it = attacks.begin(); attack_it != attacks.end(); ++attack_it) {
@@ -148,40 +152,30 @@ void fight(army& A, army& B) {
                 defenders.push_back(*it);
             }
         }
-        std::cout << "2" << std::endl;
         // Sort the possible defenders by how attack strength, effective power, then initiative
         std::sort(defenders.begin(), defenders.end(), [&attacker](const group* a, const group* b) {
-            std::cout << "2 1" << std::endl;
-            std::cout << a << " " << b << std::endl;
-            std::cout << attacker->damage(*a) << " " << b << std::endl;
             if(attacker->damage(*a) > attacker->damage(*b)) {
                 return true;
             } else if (attacker->damage(*a) < attacker->damage(*b)) {
                 return false;
             }
-            std::cout << "2 2" << std::endl;
             if(a->effective_power() > b->effective_power()) {
                 return true;
             } else if (a->effective_power() < b->effective_power()) {
                 return false;
             }
-            std::cout << "2 3" << std::endl;
             if(a->initiative > b->initiative) {
                 return true;
             } else {
                 return false;
             }
-            std::cout << "2 4" << std::endl;
         });
-        std::cout << "3" << std::endl;
         // Sort the possible defenders by how attack strength, effective power, then initiative
         if(defenders.size() != 0) {
             attacks.push_back(std::pair<group*,group*>(attacker,defenders[0]));
         }
-        std::cout << "attack choosing is finished" << std::endl;
     }
 
-    std::cout << "attack application" << std::endl;
     // Attacking
     for(auto attack_it = attacks.begin(); attack_it != attacks.end(); ++attack_it) {
         group* attacker = attack_it->first;
@@ -190,7 +184,6 @@ void fight(army& A, army& B) {
         type units_killed = damage/defender->hp;
         defender->units -= units_killed;
     }
-    std::cout << "dead unit removing" << std::endl;
     // Remove dead units
     auto remove_dead_units = [](std::vector<group*>& group_list) {
         for(auto it = group_list.begin(); it != group_list.end();) {
@@ -204,7 +197,6 @@ void fight(army& A, army& B) {
     };
     remove_dead_units(A.groups);
     remove_dead_units(B.groups);
-    std::cout << "Fight end" << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -282,22 +274,15 @@ int main(int argc, char** argv) {
 
     if(verbose) {
         std::cout << "Immune System" << std::endl;
-        for(size_t i = 0; i < immune.groups.size(); ++i) {
-            std::cout << (*(immune.groups[i])) << std::endl;
-        }
-        std::cout << std::endl;
+        std::cout << immune;
         std::cout << "Infection" << std::endl;
-        for(size_t i = 0; i < infection.groups.size(); ++i) {
-            std::cout << (*(infection.groups[i])) << std::endl;
-        }
+        std::cout << infection;
     }
 
-    std::cout << "Battle Start" << std::endl;
     while((immune.groups.size() != 0)&&(infection.groups.size() != 0)) {
         // Both sides still have units, fight!
-        fight(immune, infection);
+        fight(immune, infection, verbose);
     }
-    std::cout << "Battle End" << std::endl;
 
     type total_units = 0;
     auto sum_units = [](std::vector<group*>& groups) {
