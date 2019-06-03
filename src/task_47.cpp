@@ -103,6 +103,29 @@ std::ostream& operator<<(std::ostream& out, army& ary) {
 }
 
 void fight(army& A, army& B, bool verbose = false) {
+/*
+Immune System:
+Group 1 contains 17 units
+Group 2 contains 989 units
+Infection:
+Group 1 contains 801 units
+Group 2 contains 4485 units
+
+Infection group 1 would deal defending group 1 185832 damage
+Infection group 1 would deal defending group 2 185832 damage
+Infection group 2 would deal defending group 2 107640 damage
+Immune System group 1 would deal defending group 1 76619 damage
+Immune System group 1 would deal defending group 2 153238 damage
+Immune System group 2 would deal defending group 1 24725 damage
+
+Infection group 2 attacks defending group 2, killing 84 units
+Immune System group 2 attacks defending group 1, killing 4 units
+Immune System group 1 attacks defending group 2, killing 51 units
+Infection group 1 attacks defending group 1, killing 17 units
+*/
+
+    std::cout << "Battle End" << std::endl;
+
     // Target Selection
     army* army_selector[2] = {&A, &B};
     typedef std::pair<size_t,size_t> global_idx;
