@@ -123,8 +123,17 @@ Immune System group 2 attacks defending group 1, killing 4 units
 Immune System group 1 attacks defending group 2, killing 51 units
 Infection group 1 attacks defending group 1, killing 17 units
 */
-
-    std::cout << "Battle End" << std::endl;
+    if(verbose) {
+        std::cout << "Army A:" << std::endl;
+        for(size_t idx = 0; idx < A.groups.size(); ++idx) {
+            std::cout << "Group " << (idx+1) << " contains " << A.groups[idx]->units << " units" << std::endl;
+        }
+        std::cout << "Army B:" << std::endl;
+        for(size_t idx = 0; idx < B.groups.size(); ++idx) {
+            std::cout << "Group " << (idx+1) << " contains " << B.groups[idx]->units << " units" << std::endl;
+        }
+        std::cout << std::endl;
+    }
 
     // Target Selection
     army* army_selector[2] = {&A, &B};
@@ -162,41 +171,56 @@ Infection group 1 attacks defending group 1, killing 17 units
         army* allies = army_selector[allies_idx];
         army* enemies = army_selector[enemies_idx];
         group* attacker = allies->groups[it->second];
-        std::vector<group*> defenders;
-        for(auto it = enemies->groups.begin(); it != enemies->groups.end(); ++it) {
+        std::vector<size_t> defender_idxs;
+        for(size_t idx = 0; idx < enemies->groups.size(); ++idx) {
             bool valid = true;
             for(auto attack_it = attacks.begin(); attack_it != attacks.end(); ++attack_it) {
-                if(attack_it->second == *it) {
+                if(attack_it->second == enemies->groups[idx]) {
                     valid = false;
                     break;
                 }
             }
             if(valid) {
-                defenders.push_back(*it);
+                defender_idxs.push_back(idx);
             }
         }
         // Sort the possible defenders by how attack strength, effective power, then initiative
-        std::sort(defenders.begin(), defenders.end(), [&attacker](const group* a, const group* b) {
-            if(attacker->damage(*a) > attacker->damage(*b)) {
+        std::sort(defender_idxs.begin(), defender_idxs.end(), [&attacker,&enemies](const size_t a, const size_t b) {
+            group* A = enemies->groups[a];
+            group* B = enemies->groups[b];
+            if(attacker->damage(*A) > attacker->damage(*B)) {
                 return true;
-            } else if (attacker->damage(*a) < attacker->damage(*b)) {
+            } else if (attacker->damage(*A) < attacker->damage(*B)) {
                 return false;
             }
-            if(a->effective_power() > b->effective_power()) {
+            if(A->effective_power() > B->effective_power()) {
                 return true;
-            } else if (a->effective_power() < b->effective_power()) {
+            } else if (A->effective_power() < B->effective_power()) {
                 return false;
             }
-            if(a->initiative > b->initiative) {
+            if(A->initiative > B->initiative) {
                 return true;
             } else {
                 return false;
             }
         });
-        // Sort the possible defenders by how attack strength, effective power, then initiative
-        if(defenders.size() != 0) {
-            attacks.push_back(std::pair<group*,group*>(attacker,defenders[0]));
+        if(verbose) {
+            for(size_t idx = 0; idx < defender_idxs.size(); ++idx) {
+                if(allies_idx == 0) {
+                    std::cout << "A group ";
+                } else {
+                    std::cout << "B group ";
+                }
+                std::cout << (it->second+1) << " would deal defending group " << (idx+1) << " " << attacker->damage(*(enemies->groups[idx])) << " damage" << std::endl;
+            }
         }
+        // Sort the possible defenders by how attack strength, effective power, then initiative
+        if(defender_idxs.size() != 0) {
+            attacks.push_back(std::pair<group*,group*>(attacker,enemies->groups[defender_idxs[0]]));
+        }
+    }
+    if(verbose) {
+        std::cout << std::endl;
     }
 
     // Attacking
