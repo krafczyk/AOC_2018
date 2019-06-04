@@ -162,7 +162,21 @@ Infection group 1 attacks defending group 1, killing 17 units
         }
     });
 
-    std::vector<std::pair<group*,group*>> attacks;
+    if(verbose) {
+        std::cout << "priority list:" << std::endl;
+        for(auto it = groups.begin(); it != groups.end(); ++it) {
+            if(it->first == 0) {
+                std::cout << "A group ";
+            } else {
+                std::cout << "B group ";
+            }
+            group* grp = army_selector[it->first]->groups[it->second];
+            std::cout << (it->second+1) << " with effective power: " << grp->effective_power() << " and initiative " << grp->initiative << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+    std::map<group*,group*> targets;
     // Compute the attacks.
 
     for(auto it = groups.begin(); it != groups.end(); ++it) {
@@ -174,7 +188,7 @@ Infection group 1 attacks defending group 1, killing 17 units
         std::vector<size_t> defender_idxs;
         for(size_t idx = 0; idx < enemies->groups.size(); ++idx) {
             bool valid = true;
-            for(auto attack_it = attacks.begin(); attack_it != attacks.end(); ++attack_it) {
+            for(auto attack_it = targets.begin(); attack_it != targets.end(); ++attack_it) {
                 if(attack_it->second == enemies->groups[idx]) {
                     valid = false;
                     break;
@@ -216,7 +230,22 @@ Infection group 1 attacks defending group 1, killing 17 units
         }
         // Sort the possible defenders by how attack strength, effective power, then initiative
         if(defender_idxs.size() != 0) {
-            attacks.push_back(std::pair<group*,group*>(attacker,enemies->groups[defender_idxs[0]]));
+            if(verbose){
+                std::cout << "* ";
+                if(allies_idx == 0) {
+                    std::cout << "A group ";
+                } else {
+                    std::cout << "B group ";
+                }
+                std::cout << (it->second+1) << " will attack ";
+                if(allies_idx == 0) {
+                    std::cout << "B group ";
+                } else {
+                    std::cout << "A group ";
+                }
+                std::cout << (defender_idxs[0]+1) << std::endl;
+            }
+            targets[attacker] = enemies->groups[defender_idxs[0]];
         }
     }
     if(verbose) {
@@ -224,12 +253,24 @@ Infection group 1 attacks defending group 1, killing 17 units
     }
 
     // Attacking
-    for(auto attack_it = attacks.begin(); attack_it != attacks.end(); ++attack_it) {
-        group* attacker = attack_it->first;
-        group* defender = attack_it->second;
-        type damage = attacker->damage(*defender);
-        type units_killed = damage/defender->hp;
-        defender->units -= units_killed;
+    // Reorder groups by initiative, highest first.
+    std::sort(groups.begin(), groups.end(), [&army_selector](const global_idx idx_a, const global_idx idx_b) {
+        group* a = army_selector[idx_a.first]->groups[idx_a.second];
+        group* b = army_selector[idx_b.first]->groups[idx_b.second];
+        if(a->initiative > b->initiative) {
+            return true;
+        } else {
+            return false;
+        }
+    });
+    for(auto attack_it = groups.begin(); attack_it != groups.end(); ++attack_it) {
+        group* attacker = army_selector[attack_it->first]->groups[attack_it->second];
+        group* defender = targets[attacker];
+        if(defender != nullptr) {
+            type damage = attacker->damage(*defender);
+            type units_killed = damage/defender->hp;
+            defender->units -= units_killed;
+        }
     }
     // Remove dead units
     auto remove_dead_units = [](std::vector<group*>& group_list) {
