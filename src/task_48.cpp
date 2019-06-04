@@ -128,7 +128,7 @@ std::ostream& operator<<(std::ostream& out, army& ary) {
     return out;
 }
 
-void fight(army& A, army& B, bool verbose = false) {
+type fight(army& A, army& B, bool verbose = false) {
 /*
 Immune System:
 Group 1 contains 17 units
@@ -289,17 +289,32 @@ Infection group 1 attacks defending group 1, killing 17 units
             return false;
         }
     });
+    if(verbose) {
+        std::cout << "Attack summary" << std::endl;
+    }
+    type total_killed = 0;
     for(auto attack_it = groups.begin(); attack_it != groups.end(); ++attack_it) {
         group* attacker = army_selector[attack_it->first]->groups[attack_it->second];
         group* defender = targets[attacker];
         if(defender != nullptr) {
             type damage = attacker->damage(*defender);
             type units_killed = damage/defender->hp;
+            if(defender->units >= units_killed) {
+                total_killed += units_killed;
+            } else {
+                total_killed += defender->units;
+            }
             defender->units -= units_killed;
+            if(verbose) {
+                std::cout << units_killed << " units killed" << std::endl;
+            }
         }
     }
+    if(verbose) {
+        std::cout << std::endl;
+    }
     // Remove dead units
-    auto remove_dead_units = [](std::vector<group*>& group_list) {
+    auto remove_dead_groups = [](std::vector<group*>& group_list) {
         for(auto it = group_list.begin(); it != group_list.end();) {
             if((*it)->units <= 0) {
                 delete *it;
@@ -309,17 +324,50 @@ Infection group 1 attacks defending group 1, killing 17 units
             }
         }
     };
-    remove_dead_units(A.groups);
-    remove_dead_units(B.groups);
+    remove_dead_groups(A.groups);
+    remove_dead_groups(B.groups);
+    return total_killed;
+}
+
+type battle(army& immune, army& infection, bool verbose=false) {
+    bool none_killed = false;
+    while((immune.groups.size() != 0)&&(infection.groups.size() != 0)) {
+        // Both sides still have units, fight!
+        type killed = fight(immune, infection, verbose);
+        if(verbose) {
+            std::cout << "total killed this round: " << killed << std::endl;
+        }
+        if(killed == 0) {
+            none_killed = true;
+            break;
+        }
+    }
+    if(none_killed) {
+        return std::numeric_limits<type>::min();
+    }
+    auto sum_units = [](std::vector<group*>& groups) {
+        type total = 0;
+        std::for_each(groups.begin(), groups.end(), [&total](const group* grp) {
+            total += grp->units;
+        });
+        return total;
+    };
+    if(immune.groups.size() != 0) {
+        return sum_units(immune.groups);
+    } else {
+        return -sum_units(infection.groups);
+    }
 }
 
 int main(int argc, char** argv) {
 	// Parse Arguments
 	std::string input_filepath;
 	bool verbose = false;
+    type Boost = 0;
 	ArgParse::ArgParser Parser("Task 48");
 	Parser.AddArgument("-i/--input", "File defining the input", &input_filepath);
 	Parser.AddArgument("-v/--verbose", "Print Verbose output", &verbose);
+    Parser.AddArgument("-b", "Specify a boost manually", &Boost);
 
 	if (Parser.ParseArgs(argc, argv) < 0) {
 		std::cerr << "Problem parsing arguments!" << std::endl;
@@ -393,28 +441,35 @@ int main(int argc, char** argv) {
         std::cout << infection;
     }
 
-    while((immune.groups.size() != 0)&&(infection.groups.size() != 0)) {
-        // Both sides still have units, fight!
-        fight(immune, infection, verbose);
-    }
-
-    type total_units = 0;
-    auto sum_units = [](std::vector<group*>& groups) {
-        type total = 0;
-        std::for_each(groups.begin(), groups.end(), [&total](const group* grp) {
-            total += grp->units;
-        });
-        return total;
+    auto boost_army = [](army& A, type the_boost=1) {
+        for(auto it = A.groups.begin(); it != A.groups.end(); ++it) {
+            (*it)->ap += the_boost;
+        }
     };
 
-    if(immune.groups.size() != 0) {
-        total_units = sum_units(immune.groups);
+    if(Boost != 0) {
+        boost_army(immune, Boost);
+        type num_units = battle(immune, infection, verbose);
+        std::cout << "The winning army has " << num_units << " units left over" << std::endl;
+    } else {
+        type boost = -1;
+        type num_units = 0;
+        do {
+            boost += 1;
+            army immune_copy(immune);
+            army infection_copy(infection);
+            boost_army(immune, boost);
+            if(verbose) {
+                std::cout << "------ battle with boost of: " << boost;
+            }
+            num_units = battle(immune_copy, infection_copy);
+            if(verbose) {
+                std::cout << " outcome as: " << num_units << " ------ " << std::endl;
+            }
+        } while (num_units < 0);
+    
+        std::cout << "The immune system has " << num_units << " units with a smallest boost of " << boost << std::endl;
     }
-    if(infection.groups.size() != 0) {
-        total_units = sum_units(infection.groups);
-    }
-
-    std::cout << "The winning side has " << total_units << " units" << std::endl;
 
 	return 0;
 }
