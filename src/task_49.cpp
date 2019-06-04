@@ -91,5 +91,43 @@ int main(int argc, char** argv) {
 			std::cout << p << std::endl;
 		});
 	}
+
+	std::vector<std::vector<point>> constellations;
+	std::vector<point> new_constellation;
+	while(points.size() != 0) {
+		// Add the first point to the new constellation.
+		new_constellation.push_back(points[0]);
+		// Remove from points
+		points.erase(points.begin());
+		size_t num_added = 0;
+		do {
+			num_added = 0;
+			for(auto it = points.begin(); it != points.end();) {
+				bool in_range = false;
+				for(auto const_it = new_constellation.begin(); const_it != new_constellation.end(); ++const_it) {
+					if(it->dist(*const_it) <= 3) {
+						in_range = true;
+						break;
+					}
+				}
+				if(in_range) {
+					// add the point to the constellation
+					new_constellation.push_back(*it);
+					// remove it from the points
+					it = points.erase(it);
+					num_added += 1;
+				} else {
+					++it;
+				}
+			}
+		} while(num_added > 0);
+		// Add the new constellation to the list of constellations
+		constellations.push_back(new_constellation);
+		// Clear the new constellation for another round.
+		new_constellation.clear();
+	}
+
+	std::cout << "There are " << constellations.size() << " constellations" << std::endl;
+
 	return 0;
 }
