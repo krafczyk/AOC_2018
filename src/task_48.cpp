@@ -128,7 +128,7 @@ std::ostream& operator<<(std::ostream& out, army& ary) {
     return out;
 }
 
-type fight(army& A, army& B, bool verbose = false) {
+type fight(army& immune, army& infection, bool verbose = false) {
 /*
 Immune System:
 Group 1 contains 17 units
@@ -150,25 +150,25 @@ Immune System group 1 attacks defending group 2, killing 51 units
 Infection group 1 attacks defending group 1, killing 17 units
 */
     if(verbose) {
-        std::cout << "Army A:" << std::endl;
-        for(size_t idx = 0; idx < A.groups.size(); ++idx) {
-            std::cout << "Group " << (idx+1) << " contains " << A.groups[idx]->units << " units" << std::endl;
+        std::cout << "Immune System:" << std::endl;
+        for(size_t idx = 0; idx < immune.groups.size(); ++idx) {
+            std::cout << "Group " << (idx+1) << " contains " << immune.groups[idx]->units << " units" << std::endl;
         }
-        std::cout << "Army B:" << std::endl;
-        for(size_t idx = 0; idx < B.groups.size(); ++idx) {
-            std::cout << "Group " << (idx+1) << " contains " << B.groups[idx]->units << " units" << std::endl;
+        std::cout << "Infection:" << std::endl;
+        for(size_t idx = 0; idx < infection.groups.size(); ++idx) {
+            std::cout << "Group " << (idx+1) << " contains " << infection.groups[idx]->units << " units" << std::endl;
         }
         std::cout << std::endl;
     }
 
     // Target Selection
-    army* army_selector[2] = {&A, &B};
+    army* army_selector[2] = {&immune, &infection};
     typedef std::pair<size_t,size_t> global_idx;
     std::vector<global_idx> groups;
-    for(size_t idx = 0; idx != A.groups.size(); ++idx) {
+    for(size_t idx = 0; idx != immune.groups.size(); ++idx) {
         groups.push_back(global_idx(0,idx));
     }
-    for(size_t idx = 0; idx != B.groups.size(); ++idx) {
+    for(size_t idx = 0; idx != infection.groups.size(); ++idx) {
         groups.push_back(global_idx(1,idx));
     }
     // Sort groups into order of highest effective power and initiative first.
@@ -192,9 +192,9 @@ Infection group 1 attacks defending group 1, killing 17 units
         std::cout << "priority list:" << std::endl;
         for(auto it = groups.begin(); it != groups.end(); ++it) {
             if(it->first == 0) {
-                std::cout << "A group ";
+                std::cout << "Immune System group ";
             } else {
-                std::cout << "B group ";
+                std::cout << "Infection group ";
             }
             group* grp = army_selector[it->first]->groups[it->second];
             std::cout << (it->second+1) << " with effective power: " << grp->effective_power() << " and initiative " << grp->initiative << std::endl;
@@ -247,31 +247,50 @@ Infection group 1 attacks defending group 1, killing 17 units
         if(verbose) {
             for(size_t idx = 0; idx < defender_idxs.size(); ++idx) {
                 if(allies_idx == 0) {
-                    std::cout << "A group ";
+                    std::cout << "Immune System group ";
                 } else {
-                    std::cout << "B group ";
+                    std::cout << "Infection group ";
                 }
                 std::cout << (it->second+1) << " would deal defending group " << (idx+1) << " " << attacker->damage(*(enemies->groups[idx])) << " damage" << std::endl;
             }
         }
         // Sort the possible defenders by how attack strength, effective power, then initiative
         if(defender_idxs.size() != 0) {
-            if(verbose){
-                std::cout << "* ";
-                if(allies_idx == 0) {
-                    std::cout << "A group ";
-                } else {
-                    std::cout << "B group ";
+            // Find the first defender to which we can deal damage!
+            size_t IDX = 0;
+            for(; IDX < defender_idxs.size(); ++IDX) {
+                if(attacker->damage(*(enemies->groups[defender_idxs[IDX]])) != 0) {
+                    break;
                 }
-                std::cout << (it->second+1) << " will attack ";
-                if(allies_idx == 0) {
-                    std::cout << "B group ";
-                } else {
-                    std::cout << "A group ";
-                }
-                std::cout << (defender_idxs[0]+1) << std::endl;
             }
-            targets[attacker] = enemies->groups[defender_idxs[0]];
+            if(IDX == defender_idxs.size()) {
+                if(verbose){
+                    std::cout << "* ";
+                    if(allies_idx == 0) {
+                        std::cout << "Immune System group ";
+                    } else {
+                        std::cout << "Infection group ";
+                    }
+                    std::cout << (it->second+1) << " will not attack because it can't deal damage" << std::endl;
+                }
+            } else {
+                if(verbose){
+                    std::cout << "* ";
+                    if(allies_idx == 0) {
+                        std::cout << "Immune System group ";
+                    } else {
+                        std::cout << "Infection group ";
+                    }
+                    std::cout << (it->second+1) << " will attack ";
+                    if(allies_idx == 0) {
+                        std::cout << "Infection group ";
+                    } else {
+                        std::cout << "Immune System group ";
+                    }
+                    std::cout << (defender_idxs[0]+1) << std::endl;
+                }
+                targets[attacker] = enemies->groups[defender_idxs[0]];
+            }
         }
     }
     if(verbose) {
@@ -297,16 +316,23 @@ Infection group 1 attacks defending group 1, killing 17 units
         group* attacker = army_selector[attack_it->first]->groups[attack_it->second];
         group* defender = targets[attacker];
         if(defender != nullptr) {
+            if(verbose) {
+                std::cout << "attacker: " << *attacker << std::endl;
+                std::cout << "defender: " << *defender << std::endl;
+                std::cout << "damage to be dealt: " << attacker->damage(*defender) << std::endl;
+            }
+
             type damage = attacker->damage(*defender);
             type units_killed = damage/defender->hp;
-            if(defender->units >= units_killed) {
-                total_killed += units_killed;
-            } else {
-                total_killed += defender->units;
+            if(defender->units < units_killed) {
+                units_killed = defender->units;
             }
+            total_killed += units_killed;
             defender->units -= units_killed;
             if(verbose) {
                 std::cout << units_killed << " units killed" << std::endl;
+                std::cout << "defender new state: " << *defender << std::endl;
+                std::cout << std::endl;
             }
         }
     }
@@ -324,13 +350,14 @@ Infection group 1 attacks defending group 1, killing 17 units
             }
         }
     };
-    remove_dead_groups(A.groups);
-    remove_dead_groups(B.groups);
+    remove_dead_groups(immune.groups);
+    remove_dead_groups(infection.groups);
     return total_killed;
 }
 
 type battle(army& immune, army& infection, bool verbose=false) {
     bool none_killed = false;
+    int num_with_none_killed = 0;
     while((immune.groups.size() != 0)&&(infection.groups.size() != 0)) {
         // Both sides still have units, fight!
         type killed = fight(immune, infection, verbose);
@@ -338,8 +365,11 @@ type battle(army& immune, army& infection, bool verbose=false) {
             std::cout << "total killed this round: " << killed << std::endl;
         }
         if(killed == 0) {
-            none_killed = true;
-            break;
+            ++num_with_none_killed;
+            if(num_with_none_killed >= 5) {
+                none_killed = true;
+                break;
+            }
         }
     }
     if(none_killed) {
@@ -449,6 +479,15 @@ int main(int argc, char** argv) {
 
     if(Boost != 0) {
         boost_army(immune, Boost);
+
+        if(verbose) {
+            std::cout << "after boost: " << std::endl << std::endl;
+            std::cout << "Immune System" << std::endl;
+            std::cout << immune;
+            std::cout << "Infection" << std::endl;
+            std::cout << infection;
+        }
+
         type num_units = battle(immune, infection, verbose);
         std::cout << "The winning army has " << num_units << " units left over" << std::endl;
     } else {
@@ -458,7 +497,7 @@ int main(int argc, char** argv) {
             boost += 1;
             army immune_copy(immune);
             army infection_copy(infection);
-            boost_army(immune, boost);
+            boost_army(immune_copy, boost);
             if(verbose) {
                 std::cout << "------ battle with boost of: " << boost;
             }
