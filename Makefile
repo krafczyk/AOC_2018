@@ -1,7 +1,8 @@
-CXX=g++
-#CXX=clang++
+#CXX=g++
+CXX=clang++
 
-CXXFLAGS=-std=c++17 -fconcepts -O3 -Wall -Werror -Wextra -I utilities
+CXXFLAGS=-std=c++20 -O3 -Wall -Werror -Wextra -I utilities
+#CXXFLAGS=-std=c++20 -fconcepts -O3 -Wall -Werror -Wextra -I utilities
 #CXXFLAGS=-std=c++17 -fconcepts -g --coverage -Wall -Werror -Wextra -I utilities
 #CXXFLAGS=-std=c++17 -fconcepts -g -pg -Wall -Werror -Wextra -I utilities
 

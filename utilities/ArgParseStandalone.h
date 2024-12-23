@@ -821,10 +821,11 @@ namespace ArgParse {
 		va_list argptr;
 		va_start(argptr, format);
 		int the_length = _vscprintf(format, argptr)+1;
-		char buffer[the_length];
+    char* buffer = new char[the_length];
 		vsprintf(buffer, format, argptr);
 		va_end(argptr);
 		currentMessage = buffer;
+    delete [] buffer;
 	}
 
 	void SetSTDOUTChannel(FILE* stdout_channel) {
@@ -1742,7 +1743,7 @@ namespace ArgParse {
 	std::vector<std::string> Argument::GetCallNames(const std::string& combined_names) {
 		std::vector<std::string> answer;
 		const size_t buffer_size = combined_names.size()+1;
-		char temp_buffer[buffer_size];
+    char* temp_buffer = new char[buffer_size];
 		strcpy(temp_buffer, combined_names.c_str());
 		char* token = strtok(temp_buffer, "/");
 		do {
@@ -1755,6 +1756,7 @@ namespace ArgParse {
 			answer.push_back(std::string(token));
 			token = strtok(NULL, "/");
 		} while (true);
+    delete [] temp_buffer;
 		return answer;
 	}
 
